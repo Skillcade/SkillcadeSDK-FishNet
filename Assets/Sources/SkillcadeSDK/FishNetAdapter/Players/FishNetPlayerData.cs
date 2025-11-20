@@ -8,11 +8,31 @@ using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.Players
 {
+    /// <summary>
+    /// Данные игрока, автоматически синхронизируемые между сервером и клиентами.
+    /// Используйте extension методы из PlayerDataExtensions для упрощенной работы.
+    /// </summary>
+    /// <remarks>
+    /// ВАЖНО для junior разработчиков:
+    /// - Используйте SetDataOnLocalClient() только на клиенте для своего игрока
+    /// - Используйте SetDataOnServer() только на сервере
+    /// - Рекомендуется использовать extension методы (playerData.SetReadyFromClient() и т.д.)
+    /// </remarks>
     public class FishNetPlayerData : NetworkBehaviour, IPlayerData
     {
+        /// <summary>
+        /// Событие вызывается при изменении любых данных игрока
+        /// </summary>
         public event Action<IPlayerData> OnChanged;
+
+        /// <summary>
+        /// Событие вызывается при изменении конкретного значения (передается ключ)
+        /// </summary>
         public event Action<IPlayerData, string> OnValueChanged;
-        
+
+        /// <summary>
+        /// Сетевой ID игрока (соответствует ClientId в FishNet)
+        /// </summary>
         public int PlayerNetworkId { get; set; }
 
         private readonly SyncDictionary<string, object> _data = new();
@@ -35,6 +55,16 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             _data.OnChange -= OnDataChanged;
         }
 
+        /// <summary>
+        /// Устанавливает данные с клиента (для локального игрока).
+        /// ВАЖНО: Вызывайте только для своего игрока! Рекомендуется использовать extension методы.
+        /// </summary>
+        /// <example>
+        /// // Рекомендуется:
+        /// playerData.SetReadyFromClient(true);
+        /// // Вместо:
+        /// playerData.SetDataOnLocalClient(PlayerDataConst.IsReady, true);
+        /// </example>
         public void SetDataOnLocalClient<T>(string key, T data)
         {
             if (OwnerId != NetworkManager.ClientManager.Connection.ClientId)
@@ -42,16 +72,37 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 Debug.LogError("[FishNetPlayerData] Trying to set data not on local client");
                 return;
             }
-            
+
             SetDataFromLocalServerRpc(key, data);
         }
 
+        /// <summary>
+        /// Устанавливает данные на сервере.
+        /// ВАЖНО: Вызывайте только на сервере! Рекомендуется использовать extension методы.
+        /// </summary>
+        /// <example>
+        /// // Рекомендуется:
+        /// playerData.SetInGameOnServer(true);
+        /// // Вместо:
+        /// playerData.SetDataOnServer(PlayerDataConst.InGame, true);
+        /// </example>
         public void SetDataOnServer<T>(string key, T data)
         {
             if (IsServerInitialized)
                 _data[key] = data;
         }
 
+        /// <summary>
+        /// Пытается получить данные с проверкой типа.
+        /// Рекомендуется использовать extension методы для частых операций.
+        /// </summary>
+        /// <returns>true если данные найдены и тип совпадает</returns>
+        /// <example>
+        /// // Рекомендуется:
+        /// bool ready = playerData.IsReady();
+        /// // Вместо:
+        /// if (playerData.TryGetData(PlayerDataConst.IsReady, out bool ready)) { }
+        /// </example>
         public bool TryGetData<T>(string key, out T data)
         {
             data = default;

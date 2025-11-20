@@ -7,12 +7,33 @@ using UnityEngine;
 
 namespace SkillcadeSDK.FishNetAdapter.Players
 {
+    /// <summary>
+    /// Контроллер управления данными всех игроков.
+    /// Автоматически создает FishNetPlayerData для каждого подключающегося игрока.
+    /// </summary>
+    /// <remarks>
+    /// Используйте PlayersHelper для упрощенных операций с коллекцией игроков.
+    /// </remarks>
     public class FishNetPlayersController : NetworkBehaviour, IPlayersController
     {
+        /// <summary>
+        /// Событие вызывается когда игрок подключается
+        /// </summary>
         public event IPlayersController.PlayerDataEventHandler OnPlayerAdded;
+
+        /// <summary>
+        /// Событие вызывается когда данные игрока изменяются
+        /// </summary>
         public event IPlayersController.PlayerDataEventHandler OnPlayerDataUpdated;
+
+        /// <summary>
+        /// Событие вызывается когда игрок отключается
+        /// </summary>
         public event IPlayersController.PlayerDataEventHandler OnPlayerRemoved;
 
+        /// <summary>
+        /// Получает сетевой ID локального игрока
+        /// </summary>
         public int LocalPlayerId => NetworkManager.ClientManager.Connection.ClientId;
 
         [SerializeField] private FishNetPlayerData _playerDataPrefab;
