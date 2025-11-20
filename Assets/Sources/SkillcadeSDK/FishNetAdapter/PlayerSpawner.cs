@@ -28,7 +28,7 @@ namespace SkillcadeSDK.FishNetAdapter
         {
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
-                if (!playerData.TryGetData(PlayerDataConst.InGame, out bool inGame) || !inGame)
+                if (!playerData.IsInGame())
                     continue;
 
                 if (!_networkManager.ServerManager.Clients.TryGetValue(playerData.PlayerNetworkId, out var connection))
