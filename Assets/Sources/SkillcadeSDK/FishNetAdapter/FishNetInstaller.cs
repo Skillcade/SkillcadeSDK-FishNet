@@ -15,6 +15,7 @@ namespace SkillcadeSDK.FishNetAdapter
         [SerializeField] private UnityTransport _unityTransport;
         [SerializeField] private FishNetConnectionController _connectionController;
         [SerializeField] private FishNetPlayersController _playersController;
+        [SerializeField] private PlayerSpawner _playerSpawner;
         
         public override void Install(IContainerBuilder builder)
         {
@@ -22,6 +23,7 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_unityTransport);
             builder.RegisterInstance(_connectionController).AsSelf().AsImplementedInterfaces();
             builder.RegisterInstance(_playersController).AsSelf().AsImplementedInterfaces();
+            builder.RegisterInstance(_playerSpawner);
 
             builder.RegisterEntryPoint<FishNetTransportAdapter>().AsSelf();
             builder.RegisterEntryPoint<FishNetPingService>();
