@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using FishNet.Managing;
 using FishNet.Object;
-using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.FishNetAdapter.Players;
 using UnityEngine;
 using VContainer;
@@ -14,7 +13,7 @@ namespace SkillcadeSDK.FishNetAdapter
         [SerializeField] private NetworkObject _prefab;
 
         [Inject] private readonly NetworkManager _networkManager;
-        [Inject] private readonly IPlayersController _playersController;
+        [Inject] private readonly FishNetPlayersController _playersController;
 
         private Dictionary<int, NetworkObject> _spawnedPlayers;
 
@@ -28,7 +27,7 @@ namespace SkillcadeSDK.FishNetAdapter
         {
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
-                if (!playerData.IsInGame())
+                if (!PlayerInGameData.TryGetFromPlayer(playerData, out var data) || !data.InGame)
                     continue;
 
                 if (!_networkManager.ServerManager.Clients.TryGetValue(playerData.PlayerNetworkId, out var connection))
@@ -63,9 +62,9 @@ namespace SkillcadeSDK.FishNetAdapter
             _spawnedPlayers.Clear();
         }
 
-        private void OnPlayerRemoved(int clientId, IPlayerData data)
+        private void OnPlayerRemoved(int playerId, FishNetPlayerData data)
         {
-            _spawnedPlayers.Remove(clientId);
+            _spawnedPlayers.Remove(playerId);
         }
     }
 }

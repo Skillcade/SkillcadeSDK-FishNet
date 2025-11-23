@@ -8,14 +8,14 @@ using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.Players
 {
-    public class FishNetPlayerData : NetworkBehaviour, IPlayerData
+    public class FishNetPlayerData : NetworkBehaviour, IPlayerData<FishNetPlayerData, IDataContainer>
     {
-        public event Action<IPlayerData> OnChanged;
-        public event Action<IPlayerData, string> OnValueChanged;
-        
-        public int PlayerNetworkId { get; set; }
+        public event Action<FishNetPlayerData> OnChanged;
+        public event Action<FishNetPlayerData, string> OnValueChanged;
 
-        private readonly SyncDictionary<string, object> _data = new();
+        public int PlayerNetworkId => OwnerId;
+
+        private readonly SyncDictionary<string, IDataContainer> _data = new(new SyncTypeSettings(WritePermission.ServerOnly));
         private readonly List<MonoBehaviour> _playerObjects = new();
 
         [Inject] private readonly FishNetPlayersController _fishNetPlayersController;
@@ -35,24 +35,24 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             _data.OnChange -= OnDataChanged;
         }
 
-        public void SetDataOnLocalClient<T>(string key, T data)
-        {
-            if (OwnerId != NetworkManager.ClientManager.Connection.ClientId)
-            {
-                Debug.LogError("[FishNetPlayerData] Trying to set data not on local client");
-                return;
-            }
-            
-            SetDataFromLocalServerRpc(key, data);
-        }
-
-        public void SetDataOnServer<T>(string key, T data)
+        public void SetData<T>(string key, T data) where T : IDataContainer
         {
             if (IsServerInitialized)
+            {
                 _data[key] = data;
+                return;
+            }
+
+            if (OwnerId == NetworkManager.ClientManager.Connection.ClientId)
+            {
+                SetDataFromLocalServerRpc(key, data);
+                return;
+            }
+
+            Debug.LogError("[FishNetPlayerData] Trying to set data on remote client. Only server and local client are allowed");
         }
 
-        public bool TryGetData<T>(string key, out T data)
+        public bool TryGetData<T>(string key, out T data) where T : IDataContainer
         {
             data = default;
             if (!_data.TryGetValue(key, out var obj))
@@ -103,12 +103,12 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void SetDataFromLocalServerRpc(string key, object data)
+        private void SetDataFromLocalServerRpc(string key, IDataContainer data)
         {
             _data[key] = data;
         }
 
-        private void OnDataChanged(SyncDictionaryOperation op, string key, object value, bool asServer)
+        private void OnDataChanged(SyncDictionaryOperation op, string key, IDataContainer value, bool asServer)
         {
             OnChanged?.Invoke(this);
             OnValueChanged?.Invoke(this, key);
