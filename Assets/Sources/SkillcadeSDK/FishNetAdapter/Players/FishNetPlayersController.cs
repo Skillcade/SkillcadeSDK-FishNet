@@ -114,9 +114,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             
             var data = new PlayerMatchData
             {
-                MatchId = "",
-                Nickname = $"Player_{LocalPlayerId}",
-                PlayerId = ""
+                MatchId = _webBridge.Payload.MatchId,
+                Nickname = _webBridge.Payload.Nickname,
+                PlayerId = _webBridge.Payload.PlayerId
             };
             data.SetToPlayer(playerData);
         }
