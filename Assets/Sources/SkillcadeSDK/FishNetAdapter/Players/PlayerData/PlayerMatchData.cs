@@ -6,20 +6,17 @@ namespace SkillcadeSDK.FishNetAdapter.Players
     {
         public const string Name = "PlayerMatchData";
         
-        public string MatchId;
         public string Nickname;
         public string PlayerId;
         
         public void Write(Writer writer)
         {
-            writer.Write(MatchId);
             writer.Write(Nickname);
             writer.Write(PlayerId);
         }
 
         public void Read(Reader reader)
         {
-            MatchId = reader.ReadStringAllocated();
             Nickname = reader.ReadStringAllocated();
             PlayerId = reader.ReadStringAllocated();
         }
