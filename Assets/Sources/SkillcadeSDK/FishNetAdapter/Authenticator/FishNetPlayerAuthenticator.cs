@@ -30,24 +30,21 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         public override void InitializeOnce(NetworkManager networkManager)
         {
             base.InitializeOnce(networkManager);
-
-            if (NetworkManager.IsClientStarted)
-            {
-                NetworkManager.ClientManager.RegisterBroadcast<TokenResponseBroadcast>(HandleTokenResponse);
-                NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
-            }
+            
+            NetworkManager.ClientManager.RegisterBroadcast<TokenResponseBroadcast>(HandleTokenResponse);
+            NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
 #if UNITY_SERVER
-            if (NetworkManager.IsServerStarted)
-            {
-                NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken);
-            }
+            NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
 #endif
         }
 
         private void HandleConnectionState(ClientConnectionStateArgs stateArgs)
         {
-            string token = string.Empty;
+            if (stateArgs.ConnectionState != LocalConnectionState.Started)
+                return;
+            
+            string token = "empty";
             if (_webBridge.UsePayload)
             {
                 if (_webBridge.Payload == null || string.IsNullOrEmpty(_webBridge.Payload.JoinToken))
