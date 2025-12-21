@@ -6,8 +6,8 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 {
     public class FishNetReplayObjectHandler : ReplayObjectHandler
     {
-        protected override int NetworkPrefabId => _networkObject.PrefabId;
-        protected override int NetworkObjectId => _networkObject.ObjectId;
+        public override int NetworkPrefabId => _networkObject.PrefabId;
+        public override int NetworkObjectId => _networkObject.ObjectId;
 
         [SerializeField] private NetworkObject _networkObject;
 
