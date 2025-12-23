@@ -19,7 +19,6 @@ namespace SkillcadeSDK.FishNetAdapter
         [SerializeField] private FishNetPlayersController _playersController;
         [SerializeField] private PlayerSpawner _playerSpawner;
         [SerializeField] private GameStateMachineSyncer _stateMachineSyncer;
-        [SerializeField] private FishNetReplayService _replayService;
         
         public override void Install(IContainerBuilder builder)
         {
@@ -29,10 +28,10 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_playersController).AsSelf();
             builder.RegisterInstance(_playerSpawner);
             builder.RegisterInstance(_stateMachineSyncer).AsSelf().AsImplementedInterfaces();
-            builder.RegisterInstance(_replayService).AsSelf().AsImplementedInterfaces();
 
             builder.RegisterEntryPoint<FishNetTransportAdapter>().AsSelf();
             builder.RegisterEntryPoint<FishNetPingService>();
+            builder.Register<FishNetReplayService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
         }
     }
 }
