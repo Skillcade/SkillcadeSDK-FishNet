@@ -14,7 +14,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
         {
             var position = new Vector2(reader.ReadFloat(), reader.ReadFloat());
             var velocity = new Vector2(reader.ReadFloat(), reader.ReadFloat());
-            _rigidbody.position = position;
+            _rigidbody.transform.position = position;
             _rigidbody.linearVelocity = velocity;
         }
 

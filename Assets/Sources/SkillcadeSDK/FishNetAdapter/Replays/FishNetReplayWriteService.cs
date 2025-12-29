@@ -1,27 +1,27 @@
-﻿using FishNet.Managing;
+﻿using System;
+using FishNet.Managing;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.Replays;
 using VContainer;
+using VContainer.Unity;
 
 namespace SkillcadeSDK.FishNetAdapter.Replays
 {
-    public class FishNetReplayService : ReplayService
+    public class FishNetReplayWriteService : ReplayWriteService, IInitializable, IDisposable
     {
         [Inject] private readonly IConnectionController _connectionController;
         [Inject] private readonly NetworkManager _networkManager;
         
-        public override void Initialize()
+        public void Initialize()
         {
-            base.Initialize();
             if (_connectionController.ConnectionState == ConnectionState.Hosting)
                 Subscribe();
             else
                 _connectionController.OnStateChanged += OnConnectionStateChanged;
         }
 
-        public override void Dispose()
+        public void Dispose()
         {
-            base.Dispose();
             _connectionController.OnStateChanged -= OnConnectionStateChanged;
             _networkManager.TimeManager.OnPostTick -= SimulateTick;
         }

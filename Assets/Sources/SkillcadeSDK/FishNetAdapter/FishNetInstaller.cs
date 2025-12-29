@@ -5,9 +5,9 @@ using SkillcadeSDK.FishNetAdapter.PingService;
 using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.FishNetAdapter.Replays;
 using SkillcadeSDK.FishNetAdapter.StateMachine;
+using SkillcadeSDK.Replays;
 using UnityEngine;
 using VContainer;
-using VContainer.Unity;
 
 namespace SkillcadeSDK.FishNetAdapter
 {
@@ -29,9 +29,9 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_playerSpawner);
             builder.RegisterInstance(_stateMachineSyncer).AsSelf().AsImplementedInterfaces();
 
-            builder.RegisterEntryPoint<FishNetTransportAdapter>().AsSelf();
-            builder.RegisterEntryPoint<FishNetPingService>();
-            builder.Register<FishNetReplayService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
+            builder.Register<FishNetTransportAdapter>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
+            builder.Register<FishNetPingService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
+            builder.Register<FishNetReplayWriteService>(Lifetime.Singleton).As<ReplayWriteService>().AsSelf().AsImplementedInterfaces();
         }
     }
 }
