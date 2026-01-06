@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FishNet.Serializing;
 using JetBrains.Annotations;
+using SkillcadeSDK.FishNetAdapter.Replays;
 using UnityEngine;
 
 namespace SkillcadeSDK.FishNetAdapter.Players
@@ -56,6 +57,24 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             var dataContainer = (IDataContainer)Activator.CreateInstance(type);
             dataContainer.Read(reader);
             return dataContainer;
+        }
+
+        [UsedImplicitly]
+        public static void WriteFishNetFrameDataBroadcast(this Writer writer, FishNetFrameDataBroadcast data)
+        {
+            writer.WriteInt32(data.FrameId);
+            writer.WriteInt32(data.FrameData.Length);
+            writer.WriteUInt8Array(data.FrameData, 0, data.FrameData.Length);
+        }
+
+        [UsedImplicitly]
+        public static FishNetFrameDataBroadcast ReadFishNetFrameDataBroadcast(this Reader reader)
+        {
+            int frameId = reader.ReadInt32();
+            int length = reader.ReadInt32();
+            var data = new byte[length];
+            reader.ReadUInt8Array(ref data, length);
+            return new FishNetFrameDataBroadcast(frameId, data);
         }
     }
 }

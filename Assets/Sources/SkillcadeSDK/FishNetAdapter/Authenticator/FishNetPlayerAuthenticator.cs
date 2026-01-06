@@ -6,7 +6,7 @@ using FishNet.Transporting;
 using UnityEngine;
 using VContainer;
 
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_EDITOR
 using SkillcadeSDK.ServerValidation;
 #endif
 
@@ -18,7 +18,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         [Inject] private readonly WebBridge _webBridge;
         
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly SessionValidator _sessionValidator;
         [Inject] private readonly ServerPayloadController _serverPayloadController;
         
@@ -34,7 +34,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             NetworkManager.ClientManager.RegisterBroadcast<TokenResponseBroadcast>(HandleTokenResponse);
             NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_EDITOR
             NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
 #endif
         }
@@ -65,7 +65,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             Debug.Log($"[FishNetPlayerAuthenticator] Token validation passed: {message.Passed}");
         }
 
-#if UNITY_SERVER
+#if UNITY_SERVER || UNITY_EDITOR
         private void HandleToken(NetworkConnection connection, TokenBroadcast message, Channel channel)
         {
             if (!_webBridge.UsePayload)

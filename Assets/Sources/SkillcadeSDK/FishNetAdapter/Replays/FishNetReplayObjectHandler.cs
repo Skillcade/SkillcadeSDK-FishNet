@@ -7,7 +7,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
     public class FishNetReplayObjectHandler : ReplayObjectHandler
     {
         protected override int RuntimeNetworkObjectId => _networkObject.ObjectId;
-
+        
         [SerializeField] private NetworkObject _networkObject;
 
         private bool _isRegistered;
