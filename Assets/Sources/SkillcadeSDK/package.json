@@ -1,7 +1,7 @@
 {
   "name": "com.skillcade.sdk-fishnet",
   "displayName": "Skillcade SDK - FishNet adapter",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "unity": "2018.4",
   "author": "Skillcade",
   "description": "FishNet adapter for Skillcade SDK"

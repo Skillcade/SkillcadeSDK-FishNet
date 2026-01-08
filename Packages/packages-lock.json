@@ -32,7 +32,7 @@
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.1"
       },
-      "hash": "c0ecafba680fa14aa5fc43f1eed2090271c50c43"
+      "hash": "2f64fbe06c4a9bbe41a1f9f955f857fd79c52e77"
     },
     "com.unity.ai.navigation": {
       "version": "2.0.9",
