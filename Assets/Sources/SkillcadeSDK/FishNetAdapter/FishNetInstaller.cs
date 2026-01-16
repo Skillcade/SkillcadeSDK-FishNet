@@ -5,7 +5,6 @@ using SkillcadeSDK.FishNetAdapter.PingService;
 using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.FishNetAdapter.Replays;
 using SkillcadeSDK.FishNetAdapter.StateMachine;
-using SkillcadeSDK.Replays;
 using UnityEngine;
 using VContainer;
 
@@ -17,7 +16,6 @@ namespace SkillcadeSDK.FishNetAdapter
         [SerializeField] private UnityTransport _unityTransport;
         [SerializeField] private FishNetConnectionController _connectionController;
         [SerializeField] private FishNetPlayersController _playersController;
-        [SerializeField] private PlayerSpawner _playerSpawner;
         [SerializeField] private GameStateMachineSyncer _stateMachineSyncer;
         [SerializeField] private FishNetReplayWriteController _replayWriteController;
         
@@ -27,7 +25,6 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_unityTransport);
             builder.RegisterInstance(_connectionController).AsSelf().AsImplementedInterfaces();
             builder.RegisterInstance(_playersController).AsSelf();
-            builder.RegisterInstance(_playerSpawner);
             builder.RegisterInstance(_stateMachineSyncer).AsSelf().AsImplementedInterfaces();
             builder.RegisterInstance(_replayWriteController);
 
