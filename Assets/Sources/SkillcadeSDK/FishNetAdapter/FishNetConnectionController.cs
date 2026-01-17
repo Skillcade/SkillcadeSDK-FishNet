@@ -13,7 +13,7 @@ namespace SkillcadeSDK.FishNetAdapter
         public override ITransportAdapter Transport => _transportAdapter;
         
         [Inject] private readonly NetworkManager _networkManager;
-        [Inject] private readonly FishNetTransportAdapter _transportAdapter;
+        [Inject] private readonly ITransportAdapter _transportAdapter;
 
         public void KickClient(int clientId, KickReason reason, string log = "")
         {
