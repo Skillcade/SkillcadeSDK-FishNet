@@ -14,7 +14,6 @@ namespace SkillcadeSDK.FishNetAdapter
         public event Action<DisconnectionReason> OnDisconnected;
 
         public bool IsConnected => IsServer || IsClient;
-        public bool IsSinglePlayer => IsServer && IsClient;
         public bool IsServer { get; private set; }
         public bool IsClient { get; private set; }
 
