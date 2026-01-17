@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FishNet.Connection;
 using FishNet.Managing;
 using FishNet.Transporting;
+using SkillcadeSDK.Connection;
 using UnityEngine;
 using VContainer;
 
@@ -16,6 +17,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
     {
         public override event Action<NetworkConnection, bool> OnAuthenticationResult;
 
+        [Inject] private readonly ConnectionConfig _connectionConfig;
         [Inject] private readonly WebBridge _webBridge;
         
 #if UNITY_SERVER || UNITY_EDITOR
@@ -45,7 +47,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 return;
             
             string token = "empty";
-            if (_webBridge.UsePayload)
+            if (_connectionConfig.SkillcadeHubIntegrated)
             {
                 if (_webBridge.Payload == null || string.IsNullOrEmpty(_webBridge.Payload.JoinToken))
                     Debug.LogError("[FishNetPlayerAuthenticator] No payload on connection");
@@ -68,7 +70,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
         private void HandleToken(NetworkConnection connection, TokenBroadcast message, Channel channel)
         {
-            if (!_webBridge.UsePayload)
+            if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 SetAuthenticationResult(connection, true);
                 return;

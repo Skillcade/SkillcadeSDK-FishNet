@@ -12,6 +12,7 @@ namespace SkillcadeSDK.FishNetAdapter
     {
         [SerializeField] private NetworkObject _prefab;
 
+        [Inject] private readonly SpawnPointProvider _spawnPointProvider;
         [Inject] private readonly NetworkManager _networkManager;
         [Inject] private readonly FishNetPlayersController _playersController;
 
@@ -41,7 +42,7 @@ namespace SkillcadeSDK.FishNetAdapter
                 
                 try
                 {
-                    var instance = _networkManager.ServerManager.InstantiateAndSpawn(_prefab, Vector3.zero, Quaternion.identity, connection);
+                    var instance = _networkManager.ServerManager.InstantiateAndSpawn(_prefab, _spawnPointProvider.Position, Quaternion.identity, connection);
                     _spawnedPlayers[playerData.PlayerNetworkId] = instance;
                 }
                 catch (Exception e)

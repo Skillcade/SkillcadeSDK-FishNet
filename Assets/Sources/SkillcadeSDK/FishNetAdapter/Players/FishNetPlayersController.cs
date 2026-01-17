@@ -5,6 +5,7 @@ using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Transporting;
 using SkillcadeSDK.Common.Players;
+using SkillcadeSDK.Connection;
 using UnityEngine;
 using VContainer;
 
@@ -21,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         [SerializeField] private FishNetPlayerData _playerDataPrefab;
 
         [Inject] private readonly WebBridge _webBridge;
+        [Inject] private readonly ConnectionConfig _connectionConfig;
         
         private readonly Dictionary<int, FishNetPlayerData> _players = new();
         
@@ -56,7 +58,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
             if (IsClientInitialized && playerId == LocalPlayerId)
             {
-                if (_webBridge.UsePayload)
+                if (_connectionConfig.SkillcadeHubIntegrated)
                 {
                     WaitForPayloadAndSetMatchData(destroyCancellationToken);
                 }
