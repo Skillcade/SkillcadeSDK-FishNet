@@ -10,12 +10,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 {
     public static class DataContainerSerializerExtensions
     {
-        private static readonly Dictionary<int, Type> _idToType = new();
-        private static readonly Dictionary<Type, int> _typeToId = new();
+        private static Dictionary<int, Type> _idToType;
+        private static Dictionary<Type, int> _typeToId;
         
         [RuntimeInitializeOnLoadMethod]
         public static void InitializeContainerTypes()
         {
+            _idToType = new Dictionary<int, Type>();
+            _typeToId = new Dictionary<Type, int>();
+            
             int id = 0;
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
