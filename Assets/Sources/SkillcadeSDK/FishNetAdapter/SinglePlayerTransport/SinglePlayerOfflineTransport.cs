@@ -100,16 +100,16 @@ namespace SkillcadeSDK.FishNetAdapter
         {
             if (server)
                 return StartServer();
-            else
-                return StartClient();
+            
+            return StartClient();
         }
 
         public override bool StopConnection(bool server)
         {
             if (server)
                 return StopServer();
-            else
-                return StopClient();
+            
+            return StopClient();
         }
 
         public override bool StopConnection(int connectionId, bool immediately)
@@ -123,9 +123,13 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private bool StartServer()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Starting server connection");
             if (_serverState != LocalConnectionState.Stopped)
+            {
+                Debug.Log("[SinglePlayerOfflineTransport] Server state already started");
                 return false;
-
+            }
+            
             SetServerState(LocalConnectionState.Starting);
             SetServerState(LocalConnectionState.Started);
             
@@ -140,17 +144,19 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private bool StopServer()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Stopping server");
             if (_serverState == LocalConnectionState.Stopped)
                 return false;
 
             // Сначала отключаем клиента
             if (_clientState == LocalConnectionState.Started)
             {
+                Debug.Log("[SinglePlayerOfflineTransport] First stop client");
                 HandleRemoteConnectionState(new RemoteConnectionStateArgs(
                     RemoteConnectionState.Stopped, LocalConnectionId, Index));
                 StopClient();
             }
-
+            
             SetServerState(LocalConnectionState.Stopping);
             
             ClearQueues();
@@ -162,6 +168,7 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private bool StartClient()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Start client");
             if (_clientState != LocalConnectionState.Stopped)
                 return false;
 
@@ -179,6 +186,7 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private void CompleteClientConnection()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Complete client connection");
             // Регистрируем маппинг
             _connectionIdToTransportId[LocalConnectionId] = LocalTransportId;
             _transportIdToConnectionId[LocalTransportId] = LocalConnectionId;
@@ -193,6 +201,7 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private bool StopClient()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Stop client");
             if (_clientState == LocalConnectionState.Stopped)
                 return false;
 
@@ -216,6 +225,7 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private void SetServerState(LocalConnectionState state)
         {
+            Debug.Log($"[SinglePlayerOfflineTransport] Set server state {state}");
             if (_serverState == state) return;
             _serverState = state;
             HandleServerConnectionState(new ServerConnectionStateArgs(state, Index));
@@ -223,6 +233,7 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private void SetClientState(LocalConnectionState state)
         {
+            Debug.Log($"[SinglePlayerOfflineTransport] Set client state {state}");
             if (_clientState == state) return;
             _clientState = state;
             HandleClientConnectionState(new ClientConnectionStateArgs(state, Index));
@@ -230,12 +241,14 @@ namespace SkillcadeSDK.FishNetAdapter
 
         private void ClearQueues()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Clear queues");
             _clientToServerQueue.Clear();
             _serverToClientQueue.Clear();
         }
 
         private void ClearMappings()
         {
+            Debug.Log("[SinglePlayerOfflineTransport] Clear mappings");
             _connectionIdToTransportId.Clear();
             _transportIdToConnectionId.Clear();
         }
@@ -313,16 +326,19 @@ namespace SkillcadeSDK.FishNetAdapter
         
         public override void HandleClientConnectionState(ClientConnectionStateArgs connectionStateArgs)
         {
+            Debug.Log($"[SinglePlayerOfflineTransport] Handle client connection: {connectionStateArgs.ConnectionState}");
             OnClientConnectionState?.Invoke(connectionStateArgs);
         }
 
         public override void HandleServerConnectionState(ServerConnectionStateArgs connectionStateArgs)
         {
+            Debug.Log($"[SinglePlayerOfflineTransport] Handle server connection: {connectionStateArgs.ConnectionState}");
             OnServerConnectionState?.Invoke(connectionStateArgs);
         }
 
         public override void HandleRemoteConnectionState(RemoteConnectionStateArgs connectionStateArgs)
         {
+            Debug.Log($"[SinglePlayerOfflineTransport] Handle remote connection {connectionStateArgs.ConnectionId} - {connectionStateArgs.ConnectionState}");
             OnRemoteConnectionState?.Invoke(connectionStateArgs);
         }
 

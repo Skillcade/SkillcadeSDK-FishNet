@@ -52,6 +52,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
         {
+            Debug.Log($"[FishNetPlayersController] Register player {playerId}");
             _players[playerId] = playerData;
             OnPlayerAdded?.Invoke(playerId, playerData);
             playerData.OnChanged += OnPlayerDataChanged;

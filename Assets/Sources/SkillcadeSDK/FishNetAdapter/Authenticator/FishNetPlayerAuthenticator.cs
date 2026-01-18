@@ -36,9 +36,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             NetworkManager.ClientManager.RegisterBroadcast<TokenResponseBroadcast>(HandleTokenResponse);
             NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
-#if UNITY_SERVER || UNITY_EDITOR
             NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
-#endif
         }
 
         private void HandleConnectionState(ClientConnectionStateArgs stateArgs)
@@ -67,9 +65,9 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             Debug.Log($"[FishNetPlayerAuthenticator] Token validation passed: {message.Passed}");
         }
 
-#if UNITY_SERVER || UNITY_EDITOR
         private void HandleToken(NetworkConnection connection, TokenBroadcast message, Channel channel)
         {
+#if UNITY_SERVER || UNITY_EDITOR
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 SetAuthenticationResult(connection, true);
@@ -87,6 +85,9 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 Debug.LogError($"[FishNetPlayerAuthenticator] Error on validating client token: {e}");
                 SetAuthenticationResult(connection, false);
             }
+#else
+            SetAuthenticationResult(connection, true);
+#endif
         }
 
         private void SetAuthenticationResult(NetworkConnection connection, bool result)
@@ -98,6 +99,5 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             NetworkManager.ServerManager.Broadcast(connection, response);
             OnAuthenticationResult?.Invoke(connection, result);
         }
-#endif
     }
 }
