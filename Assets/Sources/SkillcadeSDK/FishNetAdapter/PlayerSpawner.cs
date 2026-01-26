@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using FishNet.Managing;
 using FishNet.Object;
+using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.FishNetAdapter.Players;
 using UnityEngine;
 using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter
 {
-    public class PlayerSpawner : MonoBehaviour
+    public class PlayerSpawner : MonoBehaviour, IPlayerSpawner
     {
         [SerializeField] private NetworkObject _prefab;
 
@@ -24,7 +25,7 @@ namespace SkillcadeSDK.FishNetAdapter
             _playersController.OnPlayerRemoved += OnPlayerRemoved;
         }
 
-        public void SpawnAllInGamePlayers()
+        public void EnsurePlayersSpawned()
         {
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
@@ -52,7 +53,7 @@ namespace SkillcadeSDK.FishNetAdapter
             }
         }
 
-        public void DespawnAllPlayers()
+        public void EnsurePlayersDespawned()
         {
             foreach (var entry in _spawnedPlayers)
             {

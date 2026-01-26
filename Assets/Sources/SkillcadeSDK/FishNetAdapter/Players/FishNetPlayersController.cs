@@ -110,10 +110,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 await Task.Yield();
                 cancellationToken.ThrowIfCancellationRequested();
             }
-            
+
+            Debug.Log($"[FishNetPlayersController] Set local player data {LocalPlayerId}");
             if (!_players.TryGetValue(LocalPlayerId, out var playerData))
+            {
+                Debug.Log("[FishNetPlayersController] No local player data found");
                 return;
-            
+            }
+
+            Debug.Log($"[FishNetPlayersController] Set player id {_webBridge.Payload.PlayerId} to player");
             var data = new PlayerMatchData
             {
                 Nickname = _webBridge.Payload.Nickname,
