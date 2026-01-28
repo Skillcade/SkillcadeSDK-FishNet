@@ -74,15 +74,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
                 return;
 
             if (IsServer)
-            {
-                // Publish event when player becomes ready
-                if (PlayerInGameData.TryGetFromPlayer(data, out var inGameData) && inGameData.IsReady)
-                {
-                    _eventBus.Publish(new PlayerReadyEvent(clientId));
-                }
-
                 CheckReadyPlayers();
-            }
         }
 
         private void CheckReadyPlayers()
@@ -106,15 +98,16 @@ namespace SkillcadeSDK.FishNetAdapter.States
             if (!shouldStartGame)
                 return;
 
+            _skipUpdate = true;
             SetReadyPlayersInGame();
             _playerSpawner.EnsurePlayersSpawned();
             _eventBus.Publish(new AllPlayersReadyEvent());
+            _skipUpdate = false;
             StateMachine.SetStateServer(GameStateType.Countdown);
         }
 
         private void SetReadyPlayersInGame()
         {
-            _skipUpdate = true;
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
                 if (!PlayerInGameData.TryGetFromPlayer(playerData, out var playerInGameData))
@@ -132,7 +125,6 @@ namespace SkillcadeSDK.FishNetAdapter.States
                 playerInGameData.InGame = true;
                 playerInGameData.SetToPlayer(playerData);
             }
-            _skipUpdate = false;
         }
     }
 }
