@@ -1,6 +1,7 @@
 using SkillcadeSDK.Common.Level;
 using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Events;
+using SkillcadeSDK.Replays;
 using SkillcadeSDK.StateMachine;
 using VContainer;
 
@@ -18,6 +19,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly IPlayerSpawner _playerSpawner;
         [Inject] private readonly RespawnServiceProvider _respawnServiceProvider;
         [Inject] private readonly GameEventBus _eventBus;
+        [Inject] private readonly ReplayWriteService _replayWriteService;
 
         public override void OnEnter(GameStateType prevState)
         {
@@ -30,6 +32,13 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
 
             _eventBus.Publish(new RunningStartEvent());
+            _replayWriteService.StartWrite();
+        }
+
+        public override void OnExit(GameStateType nextState)
+        {
+            base.OnExit(nextState);
+            _replayWriteService.FinishWrite(IsServer);
         }
     }
 }
