@@ -9,22 +9,6 @@
       },
       "hash": "08756d9733a556018041e52fcb9d2a6035346aeb"
     },
-    "com.firstgeargames.fishnet": {
-      "version": "https://github.com/FirstGearGames/FishNet.git?path=Assets/FishNet#4.6.12",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.2.1",
-        "com.unity.ugui": "1.0.0",
-        "com.unity.modules.animation": "1.0.0",
-        "com.unity.modules.imgui": "1.0.0",
-        "com.unity.modules.particlesystem": "1.0.0",
-        "com.unity.modules.physics": "1.0.0",
-        "com.unity.modules.physics2d": "1.0.0",
-        "com.unity.modules.ui": "1.0.0"
-      },
-      "hash": "c73c80316b4f9d9b3d7829cf634ebca682750aca"
-    },
     "com.skillcade.sdk": {
       "version": "https://github.com/Skillcade/SkillcadeSDK.git?path=Assets/Source/SkillcadeSDK",
       "depth": 0,

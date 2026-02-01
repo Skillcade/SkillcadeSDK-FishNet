@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "com.alven.fishnet.unitytransport": "https://github.com/ooonush/FishyUnityTransport.git?path=Assets/FishNet/Plugins/FishyUnityTransport",
-    "com.firstgeargames.fishnet": "https://github.com/FirstGearGames/FishNet.git?path=Assets/FishNet#4.6.12",
     "com.skillcade.sdk": "https://github.com/Skillcade/SkillcadeSDK.git?path=Assets/Source/SkillcadeSDK",
     "com.unity.ai.navigation": "2.0.9",
     "com.unity.collab-proxy": "2.10.0",
