@@ -1,5 +1,7 @@
 #if SKILLCADE_DEBUG
 using System;
+using System.Collections;
+using System.Threading.Tasks;
 using SkillcadeSDK.Connection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -42,15 +44,11 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
         private void OnConnectionStateChanged(ConnectionState state)
         {
             if (state == ConnectionState.Connected)
-            {
                 LoadDebugScope();
-            }
             else if (state == ConnectionState.Disconnected)
-            {
                 UnloadDebugScope();
-            }
         }
-
+        
         private async void LoadDebugScope()
         {
             if (_isLoaded || string.IsNullOrEmpty(_debugSceneName))
@@ -80,7 +78,6 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             {
                 SceneManager.UnloadSceneAsync(_debugSceneName);
                 _isLoaded = false;
-                Debug.Log($"[NetworkDebugScopeLoader] Unloaded debug scene: {_debugSceneName}");
             }
             catch (Exception e)
             {

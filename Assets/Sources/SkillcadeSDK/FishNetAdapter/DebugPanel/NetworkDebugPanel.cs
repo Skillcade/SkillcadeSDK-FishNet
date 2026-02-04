@@ -23,6 +23,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
 
         public void Initialize()
         {
+            Debug.Log($"[NetworkDebugPanel] Initialize, key: {_config.ToggleKey}");
             _isVisible = _config.ShowPanelOnStart;
             
             _view.gameObject.SetActive(_isVisible);

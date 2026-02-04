@@ -11,6 +11,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
         public override void Install(IContainerBuilder builder)
         {
 #if SKILLCADE_DEBUG
+            Debug.Log("[NetworkDebugInstaller] Install");
             if (string.IsNullOrEmpty(_debugSceneName))
             {
                 Debug.LogWarning("[NetworkDebugInstaller] Debug scene name is empty, skipping registration.");
@@ -20,6 +21,8 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             builder.Register<NetworkDebugScopeLoader>(Lifetime.Singleton)
                 .AsImplementedInterfaces()
                 .WithParameter(_debugSceneName);
+#else
+            Debug.Log("[NetworkDebugInstaller] Not install");
 #endif
         }
     }
