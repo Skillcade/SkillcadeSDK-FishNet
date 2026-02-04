@@ -149,7 +149,7 @@ namespace SkillcadeSDK.FishNetAdapter.PingService
             {
                 if (!PlayerPingData.TryGetFromPlayer(playerData, out var pingData))
                     pingData = new PlayerPingData();
-
+                
                 pingData.PingInMs = pingInMs;
                 pingData.SetToPlayer(playerData);
             }

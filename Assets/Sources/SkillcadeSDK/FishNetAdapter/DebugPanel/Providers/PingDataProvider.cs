@@ -22,14 +22,32 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
         private long _currentRtt;
         private long _minRtt = long.MaxValue;
         private long _maxRtt;
+        
+        private long _currentRttCustom;
+        private long _minRttCustom = long.MaxValue;
+        private long _maxRttCustom;
+        
         private readonly StringBuilder _sb = new StringBuilder(256);
 
         public void Initialize()
         {
-            if (_networkManager?.TimeManager != null)
-            {
+            if (_networkManager.TimeManager != null)
                 _networkManager.TimeManager.OnRoundTripTimeUpdated += OnRttUpdated;
-            }
+
+            _playersController.OnPlayerDataUpdated += OnPlayerDataUpdated;
+        }
+
+        private void OnPlayerDataUpdated(int playerId, FishNetPlayerData data)
+        {
+            if (playerId != _playersController.LocalPlayerId)
+                return;
+
+            if (!PlayerPingData.TryGetFromPlayer(data, out var pingData))
+                return;
+            
+            _currentRttCustom = pingData.PingInMs;
+            _minRttCustom = Math.Min(_minRttCustom, _currentRttCustom);
+            _maxRttCustom = Math.Max(_maxRttCustom, _currentRttCustom);
         }
 
         private void OnRttUpdated(long rtt)
@@ -49,8 +67,17 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
             if (_networkManager.IsClientStarted)
             {
                 var tm = _networkManager.TimeManager;
-                _sb.AppendLine($"RTT: {_currentRtt}ms (half: {tm.HalfRoundTripTime}ms)");
-                _sb.AppendLine($"Min/Max: {(_minRtt == long.MaxValue ? 0 : _minRtt)}ms / {_maxRtt}ms");
+                _sb.AppendLine("RTT from FishNet:");
+                _sb.AppendLine($"RTT: {_currentRtt.ToString()}ms (half: {tm.HalfRoundTripTime.ToString()}ms)");
+                _sb.AppendLine($"Min/Max: {(_minRtt == long.MaxValue ? 0 : _minRtt).ToString()}ms / {_maxRtt.ToString()}ms");
+
+                if (_currentRttCustom > 0)
+                {
+                    _sb.AppendLine();
+                    _sb.AppendLine("RTT from custom ping sync:");
+                    _sb.AppendLine($"RTT: {_currentRttCustom.ToString()}ms");
+                    _sb.AppendLine($"Min/Max: {(_minRttCustom == long.MaxValue ? 0 : _minRttCustom).ToString()}ms / {_maxRttCustom.ToString()}ms");
+                }
             }
 
             if (_networkManager.IsServerStarted && _playersController != null)
@@ -60,7 +87,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
                 {
                     if (PlayerPingData.TryGetFromPlayer(playerData, out var pingData))
                     {
-                        _sb.AppendLine($"  Client {playerData.PlayerNetworkId}: {pingData.PingInMs}ms");
+                        _sb.AppendLine($"  Client {playerData.PlayerNetworkId.ToString()}: {pingData.PingInMs.ToString()}ms");
                     }
                 }
             }
@@ -70,10 +97,10 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
 
         public void Dispose()
         {
-            if (_networkManager?.TimeManager != null)
-            {
+            if (_networkManager.TimeManager != null)
                 _networkManager.TimeManager.OnRoundTripTimeUpdated -= OnRttUpdated;
-            }
+            
+            _playersController.OnPlayerDataUpdated -= OnPlayerDataUpdated;
         }
     }
 }

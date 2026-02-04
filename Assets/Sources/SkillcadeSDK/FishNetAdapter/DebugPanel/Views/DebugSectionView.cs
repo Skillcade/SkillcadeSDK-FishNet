@@ -17,7 +17,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         private void Awake()
         {
             _collapseButton.onClick.AddListener(ToggleCollapse);
-            _isCollapsed = false;
+            _isCollapsed = true;
             UpdateCollapseState();
         }
 

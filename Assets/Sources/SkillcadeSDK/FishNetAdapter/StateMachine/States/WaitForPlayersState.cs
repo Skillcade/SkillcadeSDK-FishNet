@@ -48,6 +48,8 @@ namespace SkillcadeSDK.FishNetAdapter.States
             _playersController.OnPlayerAdded -= OnPlayerUpdated;
             _playersController.OnPlayerDataUpdated -= OnPlayerUpdated;
             _playersController.OnPlayerRemoved -= OnPlayerUpdated;
+            
+            _eventBus.Publish(new AllPlayersReadyEvent());
         }
 
         private void ClearReadyStateForPlayers()
@@ -101,7 +103,6 @@ namespace SkillcadeSDK.FishNetAdapter.States
             _skipUpdate = true;
             SetReadyPlayersInGame();
             _playerSpawner.EnsurePlayersSpawned();
-            _eventBus.Publish(new AllPlayersReadyEvent());
             _skipUpdate = false;
             StateMachine.SetStateServer(GameStateType.Countdown);
         }

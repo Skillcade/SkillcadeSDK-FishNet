@@ -110,6 +110,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private void OnDataChanged(SyncDictionaryOperation op, string key, IDataContainer value, bool asServer)
         {
+            if (value == null || string.IsNullOrEmpty(key) || op == SyncDictionaryOperation.Complete)
+                return;
+            
             OnChanged?.Invoke(this);
             OnValueChanged?.Invoke(this, key);
         }

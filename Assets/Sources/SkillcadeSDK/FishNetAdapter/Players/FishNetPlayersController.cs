@@ -45,15 +45,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (stateArgs.ConnectionState != RemoteConnectionState.Started)
                 return;
 
-            var instance = Instantiate(_playerDataPrefab);
-            NetworkManager.ServerManager.Spawn(instance.GetComponent<NetworkObject>(), connection);
+            var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
         }
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
         {
-            Debug.Log($"[FishNetPlayersController] Register player {playerId}");
-            _players[playerId] = playerData;
+            if (!_players.TryAdd(playerId, playerData))
+                return;
+            
             OnPlayerAdded?.Invoke(playerId, playerData);
             playerData.OnChanged += OnPlayerDataChanged;
 
@@ -111,14 +111,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            Debug.Log($"[FishNetPlayersController] Set local player data {LocalPlayerId}");
             if (!_players.TryGetValue(LocalPlayerId, out var playerData))
-            {
-                Debug.Log("[FishNetPlayersController] No local player data found");
                 return;
-            }
 
-            Debug.Log($"[FishNetPlayersController] Set player id {_webBridge.Payload.PlayerId} to player");
             var data = new PlayerMatchData
             {
                 Nickname = _webBridge.Payload.Nickname,
