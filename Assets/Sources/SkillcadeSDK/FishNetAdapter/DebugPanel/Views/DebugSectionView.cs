@@ -8,6 +8,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
     public class DebugSectionView : MonoBehaviour
     {
         [SerializeField] private TMP_Text _contentText;
+        [SerializeField] private TMP_Text _collapsedStateText;
         [SerializeField] private Button _collapseButton;
         [SerializeField] private GameObject _contentContainer;
 
@@ -16,18 +17,14 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         private void Awake()
         {
             _collapseButton.onClick.AddListener(ToggleCollapse);
+            _isCollapsed = false;
+            UpdateCollapseState();
         }
 
         public void SetContent(string content)
         {
             if (_contentText != null)
                 _contentText.text = content;
-        }
-
-        public void SetCollapsed(bool collapsed)
-        {
-            _isCollapsed = collapsed;
-            UpdateCollapseState();
         }
 
         private void ToggleCollapse()
@@ -38,12 +35,8 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 
         private void UpdateCollapseState()
         {
+            _collapsedStateText.text = _isCollapsed ? "Expand" : "Collapse";
             _contentContainer.SetActive(!_isCollapsed);
-        }
-
-        private void OnDestroy()
-        {
-            _collapseButton.onClick.RemoveListener(ToggleCollapse);
         }
     }
 }

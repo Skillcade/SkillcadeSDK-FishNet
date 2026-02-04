@@ -34,7 +34,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 
         private void Awake()
         {
-            SetupSlider(_latencySlider, 0, 500, OnLatencySliderChanged);
+            SetupSlider(_latencySlider, 0, 200, OnLatencySliderChanged);
             SetupSlider(_packetLossSlider, 0, 50, OnPacketLossSliderChanged);
             SetupSlider(_outOfOrderSlider, 0, 50, OnOutOfOrderSliderChanged);
 

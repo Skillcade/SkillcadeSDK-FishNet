@@ -168,7 +168,8 @@ MonoBehaviour:
     TypeName: 
   autoRun: 1
   autoInjectGameObjects: []
-  _installers: []
+  _installers:
+  - {fileID: 1178419605}
 --- !u!114 &1178419605
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -423,7 +424,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3442010216888866923, guid: 60a3575b49485864190f2b72c0105a16, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 600
+      value: 800
       objectReference: {fileID: 0}
     - target: {fileID: 3442010216888866923, guid: 60a3575b49485864190f2b72c0105a16, type: 3}
       propertyPath: m_LocalPosition.x
