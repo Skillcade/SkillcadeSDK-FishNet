@@ -18,6 +18,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             }
             
             builder.Register<NetworkDebugScopeLoader>(Lifetime.Singleton)
+                .AsImplementedInterfaces()
                 .WithParameter(_debugSceneName);
 #endif
         }
