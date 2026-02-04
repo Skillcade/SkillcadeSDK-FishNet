@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: NetworkDebugConfig
   m_EditorClassIdentifier: 
   ShowPanelOnStart: 0
-  ToggleKey: 284
+  ToggleKey: 112
   UpdateInterval: 0.5
   ShowConnectionSection: 1
   ShowTimingSection: 1
