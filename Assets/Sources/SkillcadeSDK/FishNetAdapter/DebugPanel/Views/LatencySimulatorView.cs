@@ -52,8 +52,8 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         private void Awake()
         {
             SetupSlider(_latencySlider, 0, 200, OnLatencySliderChanged);
-            SetupSlider(_packetLossSlider, 0, 50, OnPacketLossSliderChanged);
-            SetupSlider(_outOfOrderSlider, 0, 50, OnOutOfOrderSliderChanged);
+            SetupSlider(_packetLossSlider, 0, 100, OnPacketLossSliderChanged);
+            SetupSlider(_outOfOrderSlider, 0, 100, OnOutOfOrderSliderChanged);
 
             if (_enabledToggle != null)
             {
@@ -69,7 +69,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             SetupInputField(_packetLossInputField, OnPacketLossInputChanged);
             SetupInputField(_outOfOrderInputField, OnOutOfOrderInputChanged);
             
-            SetupSlider(_jitterSlider, 0, 1000, OnJitterSliderChanged);
+            SetupSlider(_jitterSlider, 0, 100, OnJitterSliderChanged);
             SetupInputField(_jitterInputField, OnJitterInputChanged);
 
             SetupInputField(_spikeIntervalMinInputField, OnSpikeIntervalMinInputChanged);
@@ -302,7 +302,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             if (_isUpdatingFromControl || _control == null) return;
             if (float.TryParse(value, out float val))
             {
-                val = Mathf.Clamp(val, 0, 600);
+                val = Mathf.Clamp(val, 0, 60);
                 _control.SpikeIntervalMin = val;
                 UpdateSpikeIntervalMinDisplay(val);
             }
@@ -313,7 +313,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             if (_isUpdatingFromControl || _control == null) return;
             if (float.TryParse(value, out float val))
             {
-                val = Mathf.Clamp(val, 0, 600);
+                val = Mathf.Clamp(val, 0, 60);
                 _control.SpikeIntervalMax = val;
                 UpdateSpikeIntervalMaxDisplay(val);
             }
@@ -324,7 +324,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             if (_isUpdatingFromControl || _control == null) return;
             if (float.TryParse(value, out float val))
             {
-                val = Mathf.Clamp(val, 0, 5000);
+                val = Mathf.Clamp(val, 0, 500);
                 _control.SpikeAmountMin = (long)val;
                 UpdateSpikeAmountMinDisplay(val);
             }
@@ -335,7 +335,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             if (_isUpdatingFromControl || _control == null) return;
             if (float.TryParse(value, out float val))
             {
-                val = Mathf.Clamp(val, 0, 5000);
+                val = Mathf.Clamp(val, 0, 500);
                 _control.SpikeAmountMax = (long)val;
                 UpdateSpikeAmountMaxDisplay(val);
             }
