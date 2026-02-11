@@ -37,6 +37,36 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Controls
             set => Simulator?.SetOutOfOrder(value);
         }
 
+        public long Jitter
+        {
+            get => Simulator?.GetJitter() ?? 0;
+            set => Simulator?.SetJitter(value);
+        }
+
+        public float SpikeIntervalMin
+        {
+            get => Simulator?.GetSpikeIntervalMin() ?? 0;
+            set => Simulator?.SetSpikeIntervalMin(value);
+        }
+
+        public float SpikeIntervalMax
+        {
+            get => Simulator?.GetSpikeIntervalMax() ?? 0;
+            set => Simulator?.SetSpikeIntervalMax(value);
+        }
+
+        public long SpikeAmountMin
+        {
+            get => Simulator?.GetSpikeAmountMin() ?? 0;
+            set => Simulator?.SetSpikeAmountMin(value);
+        }
+
+        public long SpikeAmountMax
+        {
+            get => Simulator?.GetSpikeAmountMax() ?? 0;
+            set => Simulator?.SetSpikeAmountMax(value);
+        }
+
         public void Reset()
         {
             if (Simulator == null) return;
@@ -45,6 +75,11 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Controls
             Latency = 0;
             PacketLoss = 0;
             OutOfOrder = 0;
+            Jitter = 0;
+            SpikeIntervalMin = 0;
+            SpikeIntervalMax = 0;
+            SpikeAmountMin = 0;
+            SpikeAmountMax = 0;
         }
     }
 }

@@ -21,6 +21,23 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         [SerializeField] private TMP_Text _packetLossValueText;
         [SerializeField] private TMP_InputField _packetLossInputField;
 
+        [Header("Jitter")]
+        [SerializeField] private Slider _jitterSlider;
+        [SerializeField] private TMP_Text _jitterValueText;
+        [SerializeField] private TMP_InputField _jitterInputField;
+
+        [Header("Spike Interval")]
+        [SerializeField] private TMP_Text _spikeIntervalMinValueText;
+        [SerializeField] private TMP_InputField _spikeIntervalMinInputField;
+        [SerializeField] private TMP_Text _spikeIntervalMaxValueText;
+        [SerializeField] private TMP_InputField _spikeIntervalMaxInputField;
+
+        [Header("Spike Amount")]
+        [SerializeField] private TMP_Text _spikeAmountMinValueText;
+        [SerializeField] private TMP_InputField _spikeAmountMinInputField;
+        [SerializeField] private TMP_Text _spikeAmountMaxValueText;
+        [SerializeField] private TMP_InputField _spikeAmountMaxInputField;
+
         [Header("Out of Order")]
         [SerializeField] private Slider _outOfOrderSlider;
         [SerializeField] private TMP_Text _outOfOrderValueText;
@@ -51,6 +68,15 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             SetupInputField(_latencyInputField, OnLatencyInputChanged);
             SetupInputField(_packetLossInputField, OnPacketLossInputChanged);
             SetupInputField(_outOfOrderInputField, OnOutOfOrderInputChanged);
+            
+            SetupSlider(_jitterSlider, 0, 1000, OnJitterSliderChanged);
+            SetupInputField(_jitterInputField, OnJitterInputChanged);
+
+            SetupInputField(_spikeIntervalMinInputField, OnSpikeIntervalMinInputChanged);
+            SetupInputField(_spikeIntervalMaxInputField, OnSpikeIntervalMaxInputChanged);
+
+            SetupInputField(_spikeAmountMinInputField, OnSpikeAmountMinInputChanged);
+            SetupInputField(_spikeAmountMaxInputField, OnSpikeAmountMaxInputChanged);
         }
 
         private void SetupSlider(Slider slider, float min, float max, UnityEngine.Events.UnityAction<float> callback)
@@ -92,6 +118,12 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             UpdateLatencyDisplay(control.Latency);
             UpdatePacketLossDisplay(control.PacketLoss * 100f);
             UpdateOutOfOrderDisplay(control.OutOfOrder * 100f);
+            
+            UpdateJitterDisplay(control.Jitter);
+            UpdateSpikeIntervalMinDisplay(control.SpikeIntervalMin);
+            UpdateSpikeIntervalMaxDisplay(control.SpikeIntervalMax);
+            UpdateSpikeAmountMinDisplay(control.SpikeAmountMin);
+            UpdateSpikeAmountMaxDisplay(control.SpikeAmountMax);
 
             _isUpdatingFromControl = false;
         }
@@ -148,6 +180,37 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             {
                 _outOfOrderInputField.text = $"{value:F0}";
             }
+        }
+
+        private void UpdateJitterDisplay(float value)
+        {
+            if (_jitterSlider != null) _jitterSlider.value = value;
+            if (_jitterValueText != null) _jitterValueText.text = $"{value:F0}ms";
+            if (_jitterInputField != null && !_jitterInputField.isFocused) _jitterInputField.text = $"{value:F0}";
+        }
+
+        private void UpdateSpikeIntervalMinDisplay(float value)
+        {
+            if (_spikeIntervalMinValueText != null) _spikeIntervalMinValueText.text = $"{value:F1}s";
+            if (_spikeIntervalMinInputField != null && !_spikeIntervalMinInputField.isFocused) _spikeIntervalMinInputField.text = $"{value:F1}";
+        }
+
+        private void UpdateSpikeIntervalMaxDisplay(float value)
+        {
+            if (_spikeIntervalMaxValueText != null) _spikeIntervalMaxValueText.text = $"{value:F1}s";
+            if (_spikeIntervalMaxInputField != null && !_spikeIntervalMaxInputField.isFocused) _spikeIntervalMaxInputField.text = $"{value:F1}";
+        }
+
+        private void UpdateSpikeAmountMinDisplay(float value)
+        {
+            if (_spikeAmountMinValueText != null) _spikeAmountMinValueText.text = $"{value:F0}ms";
+            if (_spikeAmountMinInputField != null && !_spikeAmountMinInputField.isFocused) _spikeAmountMinInputField.text = $"{value:F0}";
+        }
+
+        private void UpdateSpikeAmountMaxDisplay(float value)
+        {
+            if (_spikeAmountMaxValueText != null) _spikeAmountMaxValueText.text = $"{value:F0}ms";
+            if (_spikeAmountMaxInputField != null && !_spikeAmountMaxInputField.isFocused) _spikeAmountMaxInputField.text = $"{value:F0}";
         }
 
         private void OnEnabledToggleChanged(bool value)
@@ -216,6 +279,68 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             }
         }
 
+        private void OnJitterSliderChanged(float value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            _control.Jitter = (long)value;
+            UpdateJitterDisplay(value);
+        }
+
+        private void OnJitterInputChanged(string value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            if (float.TryParse(value, out float val))
+            {
+                val = Mathf.Clamp(val, 0, 1000);
+                _control.Jitter = (long)val;
+                UpdateJitterDisplay(val);
+            }
+        }
+
+        private void OnSpikeIntervalMinInputChanged(string value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            if (float.TryParse(value, out float val))
+            {
+                val = Mathf.Clamp(val, 0, 600);
+                _control.SpikeIntervalMin = val;
+                UpdateSpikeIntervalMinDisplay(val);
+            }
+        }
+
+        private void OnSpikeIntervalMaxInputChanged(string value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            if (float.TryParse(value, out float val))
+            {
+                val = Mathf.Clamp(val, 0, 600);
+                _control.SpikeIntervalMax = val;
+                UpdateSpikeIntervalMaxDisplay(val);
+            }
+        }
+
+        private void OnSpikeAmountMinInputChanged(string value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            if (float.TryParse(value, out float val))
+            {
+                val = Mathf.Clamp(val, 0, 5000);
+                _control.SpikeAmountMin = (long)val;
+                UpdateSpikeAmountMinDisplay(val);
+            }
+        }
+
+        private void OnSpikeAmountMaxInputChanged(string value)
+        {
+            if (_isUpdatingFromControl || _control == null) return;
+            if (float.TryParse(value, out float val))
+            {
+                val = Mathf.Clamp(val, 0, 5000);
+                _control.SpikeAmountMax = (long)val;
+                UpdateSpikeAmountMaxDisplay(val);
+            }
+        }
+
         private void OnResetClicked()
         {
             if (_control == null) return;
@@ -226,29 +351,23 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 
         private void OnDestroy()
         {
-            if (_latencySlider != null)
-                _latencySlider.onValueChanged.RemoveListener(OnLatencySliderChanged);
+            if (_latencySlider != null) _latencySlider.onValueChanged.RemoveListener(OnLatencySliderChanged);
+            if (_packetLossSlider != null) _packetLossSlider.onValueChanged.RemoveListener(OnPacketLossSliderChanged);
+            if (_outOfOrderSlider != null) _outOfOrderSlider.onValueChanged.RemoveListener(OnOutOfOrderSliderChanged);
+            if (_enabledToggle != null) _enabledToggle.onValueChanged.RemoveListener(OnEnabledToggleChanged);
+            if (_resetButton != null) _resetButton.onClick.RemoveListener(OnResetClicked);
+            
+            if (_latencyInputField != null) _latencyInputField.onEndEdit.RemoveListener(OnLatencyInputChanged);
+            if (_packetLossInputField != null) _packetLossInputField.onEndEdit.RemoveListener(OnPacketLossInputChanged);
+            if (_outOfOrderInputField != null) _outOfOrderInputField.onEndEdit.RemoveListener(OnOutOfOrderInputChanged);
 
-            if (_packetLossSlider != null)
-                _packetLossSlider.onValueChanged.RemoveListener(OnPacketLossSliderChanged);
+            if (_jitterSlider != null) _jitterSlider.onValueChanged.RemoveListener(OnJitterSliderChanged);
+            if (_jitterInputField != null) _jitterInputField.onEndEdit.RemoveListener(OnJitterInputChanged);
 
-            if (_outOfOrderSlider != null)
-                _outOfOrderSlider.onValueChanged.RemoveListener(OnOutOfOrderSliderChanged);
-
-            if (_enabledToggle != null)
-                _enabledToggle.onValueChanged.RemoveListener(OnEnabledToggleChanged);
-
-            if (_resetButton != null)
-                _resetButton.onClick.RemoveListener(OnResetClicked);
-
-            if (_latencyInputField != null)
-                _latencyInputField.onEndEdit.RemoveListener(OnLatencyInputChanged);
-
-            if (_packetLossInputField != null)
-                _packetLossInputField.onEndEdit.RemoveListener(OnPacketLossInputChanged);
-
-            if (_outOfOrderInputField != null)
-                _outOfOrderInputField.onEndEdit.RemoveListener(OnOutOfOrderInputChanged);
+            if (_spikeIntervalMinInputField != null) _spikeIntervalMinInputField.onEndEdit.RemoveListener(OnSpikeIntervalMinInputChanged);
+            if (_spikeIntervalMaxInputField != null) _spikeIntervalMaxInputField.onEndEdit.RemoveListener(OnSpikeIntervalMaxInputChanged);
+            if (_spikeAmountMinInputField != null) _spikeAmountMinInputField.onEndEdit.RemoveListener(OnSpikeAmountMinInputChanged);
+            if (_spikeAmountMaxInputField != null) _spikeAmountMaxInputField.onEndEdit.RemoveListener(OnSpikeAmountMaxInputChanged);
         }
     }
 }

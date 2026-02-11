@@ -98,6 +98,99 @@ namespace FishNet.Managing.Transporting
         /// <param name = "value">Latency as milliseconds.</param>
         public void SetLatency(long value) => _latency = value;
 
+        [Header("Jitter")]
+        /// <summary>
+        /// Jitter in milliseconds to add to latency (+/-).
+        /// </summary>
+        [Tooltip("Jitter in milliseconds to add to latency (+/-).")]
+        [Range(0, 1000)]
+        [SerializeField]
+        private long _jitter = 0;
+
+        /// <summary>
+        /// Gets the jitter value.
+        /// </summary>
+        public long GetJitter() => _jitter;
+
+        /// <summary>
+        /// Sets the jitter value.
+        /// </summary>
+        /// <param name="value">Jitter as milliseconds.</param>
+        public void SetJitter(long value) => _jitter = value;
+
+        [Header("Spikes")]
+        /// <summary>
+        /// Minimum seconds between latency spikes.
+        /// </summary>
+        [Tooltip("Minimum seconds between latency spikes.")]
+        [Range(0f, 600f)]
+        [SerializeField]
+        private float _spikeIntervalMin = 0f;
+
+        /// <summary>
+        /// Gets the minimum spike interval.
+        /// </summary>
+        public float GetSpikeIntervalMin() => _spikeIntervalMin;
+
+        /// <summary>
+        /// Sets the minimum spike interval.
+        /// </summary>
+        public void SetSpikeIntervalMin(float value) => _spikeIntervalMin = value;
+
+        /// <summary>
+        /// Maximum seconds between latency spikes.
+        /// </summary>
+        [Tooltip("Maximum seconds between latency spikes.")]
+        [Range(0f, 600f)]
+        [SerializeField]
+        private float _spikeIntervalMax = 0f;
+
+        /// <summary>
+        /// Gets the maximum spike interval.
+        /// </summary>
+        public float GetSpikeIntervalMax() => _spikeIntervalMax;
+
+        /// <summary>
+        /// Sets the maximum spike interval.
+        /// </summary>
+        public void SetSpikeIntervalMax(float value) => _spikeIntervalMax = value;
+
+        /// <summary>
+        /// Minimum latency to add during a spike (ms).
+        /// </summary>
+        [Tooltip("Minimum latency to add during a spike (ms).")]
+        [Range(0, 5000)]
+        [SerializeField]
+        private long _spikeAmountMin = 0;
+
+        /// <summary>
+        /// Gets the minimum spike amount.
+        /// </summary>
+        public long GetSpikeAmountMin() => _spikeAmountMin;
+
+        /// <summary>
+        /// Sets the minimum spike amount.
+        /// </summary>
+        public void SetSpikeAmountMin(long value) => _spikeAmountMin = value;
+
+        /// <summary>
+        /// Maximum latency to add during a spike (ms).
+        /// </summary>
+        [Tooltip("Maximum latency to add during a spike (ms).")]
+        [Range(0, 5000)]
+        [SerializeField]
+        private long _spikeAmountMax = 0;
+
+        /// <summary>
+        /// Gets the maximum spike amount.
+        /// </summary>
+        public long GetSpikeAmountMax() => _spikeAmountMax;
+
+        /// <summary>
+        /// Sets the maximum spike amount.
+        /// </summary>
+        public void SetSpikeAmountMax(long value) => _spikeAmountMax = value;
+
         [Header("Unreliable")]
         /// <summary>
         /// Percentage of unreliable packets which should arrive out of order.
@@ -169,6 +262,10 @@ namespace FishNet.Managing.Transporting
         /// Used to generate chances of latency.
         /// </summary>
         private readonly System.Random _random = new();
+        /// <summary>
+        /// Time when the next latency spike will occur.
+        /// </summary>
+        private float _nextSpikeTime = -1f;
         #endregion
 
         #region Initialization and Unity
@@ -206,6 +303,8 @@ namespace FishNet.Managing.Transporting
             _toServerUnreliable.Clear();
             _toClientReliable.Clear();
             _toClientUnreliable.Clear();
+            
+            _nextSpikeTime = -1f;
         }
 
         /// <summary>
@@ -284,6 +383,38 @@ namespace FishNet.Managing.Transporting
                 collection = c == Channel.Reliable ? _toClientReliable : _toClientUnreliable;
 
             float latency = GetLatencyAsFloat();
+            
+            // Jitter
+            if (_jitter > 0)
+            {
+                float jitterSeconds = (float)_jitter / 1000f;
+                latency += UnityEngine.Random.Range(-jitterSeconds, jitterSeconds);
+                if (latency < 0) latency = 0;
+            }
+
+            // Spikes
+            float now = Time.unscaledTime;
+            // Initialize spike timer if needed
+            if (_nextSpikeTime < 0f && (_spikeIntervalMin > 0f || _spikeIntervalMax > 0f))
+            {
+                float interval = UnityEngine.Random.Range(_spikeIntervalMin, _spikeIntervalMax);
+                if (interval < _spikeIntervalMin) interval = _spikeIntervalMin; // Handle incorrect max < min
+                _nextSpikeTime = now + interval;
+            }
+
+            if (_nextSpikeTime > 0f && now >= _nextSpikeTime)
+            {
+                float spikeAmount = UnityEngine.Random.Range(_spikeAmountMin, _spikeAmountMax);
+                if (spikeAmount < _spikeAmountMin) spikeAmount = _spikeAmountMin; // Handle incorrect max < min
+                
+                latency += spikeAmount / 1000f;
+
+                // Schedule next spike
+                float interval = UnityEngine.Random.Range(_spikeIntervalMin, _spikeIntervalMax);
+                if (interval < _spikeIntervalMin) interval = _spikeIntervalMin;
+                _nextSpikeTime = now + interval;
+            }
+
             //If dropping check to add extra latency if reliable, or discard if not.
             if (DropPacket())
             {
