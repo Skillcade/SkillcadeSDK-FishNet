@@ -8,10 +8,10 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
     {
         [Header("Display Settings")]
         [Tooltip("Default panel visibility on startup")]
-        public bool ShowPanelOnStart = false;
+        public bool ShowPanelOnStart;
 
         [Tooltip("Toggle key for showing/hiding the panel")]
-        public KeyCode ToggleKey = KeyCode.F3;
+        public KeyCode ToggleKey;
 
         [Tooltip("Update interval for statistics in seconds")]
         [Range(0.1f, 2f)]

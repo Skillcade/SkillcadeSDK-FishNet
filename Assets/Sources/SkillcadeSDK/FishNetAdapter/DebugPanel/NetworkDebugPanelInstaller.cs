@@ -2,6 +2,7 @@
 using SkillcadeSDK.DI;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Controls;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Providers;
+using SkillcadeSDK.FishNetAdapter.DebugPanel.StatsOverlay;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Views;
 using UnityEngine;
 using VContainer;
@@ -12,6 +13,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
     {
         [SerializeField] private NetworkDebugPanelView _debugPanelView;
         [SerializeField] private NetworkDebugConfig _config;
+        [SerializeField] private NetworkStatsOverlayView _statsOverlayView;
 
         public override void Install(IContainerBuilder builder)
         {
@@ -29,6 +31,10 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
 
             // Controls
             builder.Register<LatencySimulatorControl>(Lifetime.Singleton);
+
+            // Stats Overlay
+            builder.RegisterInstance(_statsOverlayView);
+            builder.Register<NetworkStatsOverlay>(Lifetime.Singleton).AsImplementedInterfaces();
         }
     }
 }
