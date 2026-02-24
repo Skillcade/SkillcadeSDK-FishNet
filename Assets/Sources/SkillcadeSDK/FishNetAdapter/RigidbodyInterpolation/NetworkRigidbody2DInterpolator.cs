@@ -30,6 +30,7 @@ namespace Game.RigidbodyInterpolation
         [SerializeField] private NetworkObject _networkObject;
         [SerializeField] private Rigidbody2D _rigidbody;
         [SerializeField] private Transform _visualTransform;
+        [SerializeField] private bool _detachVisuals;
 
         [Header("Timeline")]
         [SerializeField] private SnapshotInterpolationSettings _interpolationSettings;
@@ -81,26 +82,23 @@ namespace Game.RigidbodyInterpolation
             ApplyVisualPosition(position);
         }
 
-        private void Awake()
+        public override void OnStartNetwork()
         {
+            base.OnStartNetwork();
+            
             InitializeBuffers();
             CacheVisualOffsets();
             ApplyVisualPosition(_rigidbody.position);
-        }
-
-        private void OnEnable()
-        {
-            InitializeBuffers();
-            CacheVisualOffsets();
-            ApplyVisualPosition(_rigidbody.position);
-
+            
             _visualsParent = _visualTransform.parent;
-            _visualTransform.parent = null;
+            if (Owner.IsLocalClient && _detachVisuals)
+                _visualTransform.parent = null;
         }
 
-        private void OnDisable()
+        public override void OnStopNetwork()
         {
-            _visualTransform.parent = _visualsParent;
+            if (IsOwner && _detachVisuals)
+                _visualTransform.parent = _visualsParent;
         }
 
         protected override void TimeManager_OnPostTick()
