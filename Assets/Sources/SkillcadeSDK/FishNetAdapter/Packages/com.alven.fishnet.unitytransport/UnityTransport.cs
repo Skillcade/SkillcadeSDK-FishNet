@@ -1602,11 +1602,15 @@ namespace FishNet.Transporting.UTP
             {
                 HandleRemoteConnectionState(RemoteConnectionState.Stopped, clientId);
             }
-            else if (m_ClientState == LocalConnectionState.Started)
+            else if (m_ClientState is LocalConnectionState.Started or LocalConnectionState.Starting)
             {
                 SetClientConnectionState(LocalConnectionState.Stopping);
                 ShutdownInternals();
                 SetClientConnectionState(LocalConnectionState.Stopped);
+            }
+            else
+            {
+                Debug.Log($"[UnityTransport] Not handle disconnect, server state: {m_ServerState}, client state: {m_ClientState}");
             }
         }
 
