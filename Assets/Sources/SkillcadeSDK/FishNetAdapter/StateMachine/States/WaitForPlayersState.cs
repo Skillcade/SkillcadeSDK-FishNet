@@ -24,6 +24,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly GameEventBus _eventBus;
 
         private bool _skipUpdate;
+        private bool _startGameNextFrame;
 
         public override void OnEnter(GameStateType prevState)
         {
@@ -50,6 +51,13 @@ namespace SkillcadeSDK.FishNetAdapter.States
             _playersController.OnPlayerRemoved -= OnPlayerUpdated;
             
             _eventBus.Publish(new AllPlayersReadyEvent());
+        }
+
+        public override void Update()
+        {
+            base.Update();
+            if (_startGameNextFrame)
+                StartGame();
         }
 
         private void ClearReadyStateForPlayers()
@@ -81,6 +89,9 @@ namespace SkillcadeSDK.FishNetAdapter.States
 
         private void CheckReadyPlayers()
         {
+            if (_startGameNextFrame)
+                return;
+            
             int readyPlayers = 0;
             int notReadyPlayers = 0;
             int totalPlayers = 0;
@@ -100,6 +111,12 @@ namespace SkillcadeSDK.FishNetAdapter.States
             if (!shouldStartGame)
                 return;
 
+            _startGameNextFrame = true;
+        }
+
+        private void StartGame()
+        {
+            _startGameNextFrame = false;
             _skipUpdate = true;
             SetReadyPlayersInGame();
             _playerSpawner.EnsurePlayersSpawned();
