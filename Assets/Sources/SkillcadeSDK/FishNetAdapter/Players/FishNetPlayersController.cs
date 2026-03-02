@@ -9,6 +9,10 @@ using SkillcadeSDK.Connection;
 using UnityEngine;
 using VContainer;
 
+#if UNITY_SERVER || UNITY_EDITOR
+using SkillcadeSDK.ServerValidation;
+#endif
+
 namespace SkillcadeSDK.FishNetAdapter.Players
 {
     public class FishNetPlayersController : NetworkBehaviour, IPlayersController<FishNetPlayerData, IDataContainer>
@@ -23,6 +27,10 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         [Inject] private readonly WebBridge _webBridge;
         [Inject] private readonly ConnectionConfig _connectionConfig;
+        
+#if UNITY_SERVER || UNITY_EDITOR
+        [Inject] private readonly ServerPayloadController _serverPayloadController;
+#endif
         
         private readonly Dictionary<int, FishNetPlayerData> _players = new();
         
@@ -57,21 +65,21 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             OnPlayerAdded?.Invoke(playerId, playerData);
             playerData.OnChanged += OnPlayerDataChanged;
 
-            if (IsClientInitialized && playerId == LocalPlayerId)
+            if (!IsClientInitialized || playerId != LocalPlayerId)
+                return;
+            
+            if (_connectionConfig.SkillcadeHubIntegrated)
             {
-                if (_connectionConfig.SkillcadeHubIntegrated)
+                WaitForPayloadAndSetMatchData(destroyCancellationToken).DoNotAwait();
+            }
+            else
+            {
+                var data = new PlayerMatchData
                 {
-                    WaitForPayloadAndSetMatchData(destroyCancellationToken);
-                }
-                else
-                {
-                    var data = new PlayerMatchData
-                    {
-                        Nickname = $"Player_{LocalPlayerId}",
-                        PlayerId = ""
-                    };
-                    data.SetToPlayer(playerData);
-                }
+                    Nickname = $"Player_{LocalPlayerId}",
+                    PlayerId = ""
+                };
+                data.SetToPlayer(playerData);
             }
         }
 
@@ -101,6 +109,33 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         private void OnPlayerDataChanged(FishNetPlayerData playerData)
         {
             OnPlayerDataUpdated?.Invoke(playerData.PlayerNetworkId, playerData);
+            
+#if UNITY_SERVER || UNITY_EDITOR
+            if (!IsServerInitialized)
+                return;
+            
+            if (_serverPayloadController.Payload == null || _serverPayloadController.Payload.CharacterByPlayerIds == null)
+                return;
+            
+            if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+                return;
+            
+            if (!PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
+                return;
+
+            foreach (var characterContainer in _serverPayloadController.Payload.CharacterByPlayerIds)
+            {
+                if (characterContainer.PlayerId != matchData.PlayerId)
+                    continue;
+                
+                var characterData = new PlayerCharacterData
+                {
+                    CharacterName = characterContainer.CharacterName
+                };
+                characterData.SetToPlayer(playerData);
+                break;
+            }
+#endif
         }
 
         private async Task WaitForPayloadAndSetMatchData(CancellationToken cancellationToken)
