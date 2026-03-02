@@ -32,7 +32,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
 
             if (IsServer)
             {
-                _matchService.SendWinnerToBackend(data.WinnerClientId);
+                _matchService.SendWinnerToBackend(data.WinnerClientId).DoNotAwait();
                 _playerSpawner.EnsurePlayersDespawned();
             }
 
