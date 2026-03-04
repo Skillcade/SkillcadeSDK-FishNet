@@ -1,5 +1,6 @@
 using SkillcadeSDK.Common;
 using SkillcadeSDK.Common.Players;
+using SkillcadeSDK.Connection;
 using SkillcadeSDK.Events;
 using SkillcadeSDK.FishNetAdapter.Match;
 using SkillcadeSDK.StateMachine;
@@ -21,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly IPlayerSpawner _playerSpawner;
         [Inject] private readonly MatchService _matchService;
         [Inject] private readonly GameEventBus _eventBus;
+        [Inject] private readonly IConnectionController _connectionController;
 
         private float _timer;
 
@@ -43,6 +45,9 @@ namespace SkillcadeSDK.FishNetAdapter.States
         public override void Update()
         {
             base.Update();
+            if (_connectionController.ActiveConfig.SkillcadeHubIntegrated)
+                return;
+            
             _timer -= Time.deltaTime;
 
             if (_timer <= 0f && IsServer)

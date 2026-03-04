@@ -127,7 +127,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             {
                 if (characterContainer.PlayerId != matchData.PlayerId)
                     continue;
-                
+
+                Debug.Log($"[FishNetPlayersController] Set character {characterContainer.CharacterName} to player {playerData.PlayerNetworkId} - {matchData.PlayerId}");
                 var characterData = new PlayerCharacterData
                 {
                     CharacterName = characterContainer.CharacterName

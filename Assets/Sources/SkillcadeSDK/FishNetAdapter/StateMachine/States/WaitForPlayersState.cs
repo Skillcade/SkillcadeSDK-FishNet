@@ -6,6 +6,11 @@ using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.StateMachine;
 using VContainer;
 
+#if UNITY_SERVER || UNITY_EDITOR
+using SkillcadeSDK.ServerValidation;
+using UnityEngine;
+#endif
+
 namespace SkillcadeSDK.FishNetAdapter.States
 {
     /// <summary>
@@ -22,6 +27,10 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly RespawnServiceProvider _respawnServiceProvider;
         [Inject] private readonly IConnectionController _connectionController;
         [Inject] private readonly GameEventBus _eventBus;
+        
+#if UNITY_SERVER || UNITY_EDITOR
+        [Inject] private readonly ServerPayloadController _serverPayloadController;
+#endif
 
         private bool _skipUpdate;
         private bool _startGameNextFrame;
@@ -102,6 +111,17 @@ namespace SkillcadeSDK.FishNetAdapter.States
                     readyPlayers++;
                 else
                     notReadyPlayers++;
+
+#if UNITY_SERVER || UNITY_EDITOR
+                if (_serverPayloadController.Payload == null || _serverPayloadController.Payload.CharacterByPlayerIds == null)
+                    continue;
+                
+                if (!PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+                {
+                    Debug.Log($"[WaitForPlayersState] Got player {playerData.PlayerNetworkId} without character data");
+                    return;
+                }
+#endif
             }
 
             bool shouldStartGame = _connectionController.ActiveConfig.TargetPlayerCount > 0
