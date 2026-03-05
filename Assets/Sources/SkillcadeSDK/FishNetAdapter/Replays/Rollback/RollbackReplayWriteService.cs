@@ -36,11 +36,12 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 #endif
 
         private readonly Dictionary<int, List<FrameInfo>> _replayDataForClients = new();
-        private readonly List<ReplayEvent> _pendingEvents = new();
+        private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
 
         private int _frameId;
         private bool _active;
         private DateTime _startTime;
+        private int _currentTick;
 
         public void Initialize()
         {
@@ -64,7 +65,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _startTime = DateTime.UtcNow;
             _frameId = 0;
             _replayDataForClients.Clear();
-            _pendingEvents.Clear();
+            _eventsByTick.Clear();
         }
 
         private void OnWriteFinished(bool asServer)
@@ -74,19 +75,34 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
             _active = false;
             _replayDataForClients.Clear();
-            _pendingEvents.Clear();
+            _eventsByTick.Clear();
         }
 
         private void OnObjectRegistered(ReplayObjectHandler handler)
         {
             if (!_active) return;
-            _pendingEvents.Add(new ObjectCreatedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
+            AddEventAtCurrentTick(new ObjectCreatedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
         }
 
         private void OnObjectUnregistered(ReplayObjectHandler handler)
         {
             if (!_active) return;
-            _pendingEvents.Add(new ObjectDestroyedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
+            AddEventAtCurrentTick(new ObjectDestroyedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
+        }
+
+        private void AddEventAtCurrentTick(ReplayEvent evt)
+        {
+            if (!_eventsByTick.TryGetValue(_currentTick, out var events))
+            {
+                events = new List<ReplayEvent>();
+                _eventsByTick[_currentTick] = events;
+            }
+            events.Add(evt);
+        }
+
+        public void SetCurrentTick(int tick)
+        {
+            _currentTick = tick;
         }
 
         public void CaptureServerFrame(int tick)
@@ -109,9 +125,16 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             var writer = new ReplayWriter(binaryWriter);
             writer.WriteInt(tick);
 
-            writer.WriteInt(_pendingEvents.Count);
-            foreach (var pendingEvent in _pendingEvents)
-                writer.Write(pendingEvent);
+            if (_eventsByTick.TryGetValue(tick, out var events))
+            {
+                writer.WriteInt(events.Count);
+                foreach (var pendingEvent in events)
+                    writer.Write(pendingEvent);
+            }
+            else
+            {
+                writer.WriteInt(0);
+            }
 
             var activeObjects = _replayWriteService.ActiveObjects;
             writer.WriteInt(activeObjects.Count);
@@ -137,7 +160,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             });
 
             _frameId++;
-            _pendingEvents.Clear();
         }
 
         private void WriteFile()

@@ -24,7 +24,9 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             if (!IsServerInitialized)
                 return;
 
-            _rollbackReplayService.CaptureServerFrame((int)TimeManager.Tick);
+            var tick = (int)TimeManager.Tick;
+            _rollbackReplayService.SetCurrentTick(tick);
+            _rollbackReplayService.CaptureServerFrame(tick);
         }
     }
 }
