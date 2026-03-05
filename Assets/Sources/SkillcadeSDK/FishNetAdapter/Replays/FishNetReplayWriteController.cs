@@ -2,15 +2,12 @@
 using FishNet.Object;
 using FishNet.Transporting;
 using SkillcadeSDK.Replays;
-using UnityEngine;
 using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.Replays
 {
     public class FishNetReplayWriteController : NetworkBehaviour
     {
-        [SerializeField] private int _framesToSend;
-        
         [Inject] private readonly ReplayWriteService _replayWriteService;
 
         public override void OnStartNetwork()
