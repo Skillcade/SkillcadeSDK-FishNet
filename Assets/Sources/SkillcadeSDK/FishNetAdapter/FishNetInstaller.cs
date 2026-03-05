@@ -3,6 +3,7 @@ using SkillcadeSDK.DI;
 using SkillcadeSDK.FishNetAdapter.PingService;
 using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.FishNetAdapter.Replays;
+using SkillcadeSDK.FishNetAdapter.Replays.Rollback;
 using SkillcadeSDK.FishNetAdapter.StateMachine;
 using UnityEngine;
 using VContainer;
@@ -16,6 +17,7 @@ namespace SkillcadeSDK.FishNetAdapter
         [SerializeField] private FishNetPlayersController _playersController;
         [SerializeField] private GameStateMachineSyncer _stateMachineSyncer;
         [SerializeField] private FishNetReplayWriteController _replayWriteController;
+        [SerializeField] private RollbackReplayWriteController _rollbackReplayController;
 
         public override void Install(IContainerBuilder builder)
         {
@@ -24,6 +26,8 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_playersController).AsSelf();
             builder.RegisterInstance(_stateMachineSyncer).AsSelf().AsImplementedInterfaces();
             builder.RegisterInstance(_replayWriteController);
+            builder.RegisterInstance(_rollbackReplayController);
+            builder.Register<RollbackReplayWriteService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
 
             builder.Register<FishNetPingService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
         }
