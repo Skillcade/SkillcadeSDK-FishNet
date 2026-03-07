@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using NUnit.Framework;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.Replays;
 using SkillcadeSDK.Replays.Components;
@@ -35,10 +36,12 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         [Inject] private readonly ServerPayloadController _serverPayloadController;
 #endif
 
-        private readonly Dictionary<int, List<FrameInfo>> _replayDataForClients = new();
+        private readonly Dictionary<int, List<(int, FrameInfo)>> _replayDataForClients = new();
         private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
+        private readonly List<ReplayEvent> _pendingEvents = new();
 
-        private int _frameId;
+        private readonly List<ReplayEvent> _eventsFrameBuffer = new();
+
         private bool _active;
         private DateTime _startTime;
         private int _currentTick;
@@ -47,6 +50,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         {
             _replayWriteService.OnWriteStarted += OnWriteStarted;
             _replayWriteService.OnWriteFinished += OnWriteFinished;
+            _replayWriteService.OnEventAdded += OnEventAdded;
             _replayWriteService.OnObjectRegistered += OnObjectRegistered;
             _replayWriteService.OnObjectUnregistered += OnObjectUnregistered;
         }
@@ -55,21 +59,23 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         {
             _replayWriteService.OnWriteStarted -= OnWriteStarted;
             _replayWriteService.OnWriteFinished -= OnWriteFinished;
+            _replayWriteService.OnEventAdded -= OnEventAdded;
             _replayWriteService.OnObjectRegistered -= OnObjectRegistered;
             _replayWriteService.OnObjectUnregistered -= OnObjectUnregistered;
         }
 
         private void OnWriteStarted()
         {
+            // Debug.Log("[RollbackReplayWriteService] Write started");
             _active = true;
             _startTime = DateTime.UtcNow;
-            _frameId = 0;
             _replayDataForClients.Clear();
             _eventsByTick.Clear();
         }
 
         private void OnWriteFinished(bool asServer)
         {
+            // Debug.Log("[RollbackReplayWriteService] Write finished");
             if (asServer && _connectionController.ConnectionState != ConnectionState.SinglePlayer)
                 WriteFile();
 
@@ -80,14 +86,27 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void OnObjectRegistered(ReplayObjectHandler handler)
         {
-            if (!_active) return;
-            AddEventAtCurrentTick(new ObjectCreatedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
+            // Debug.Log($"[RollbackReplayWriteService] object registered, active: {_active}");
+            var createEvent = new ObjectCreatedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position);
+            if (_active)
+                AddEventAtCurrentTick(createEvent);
+            else
+                _pendingEvents.Add(createEvent);
         }
 
         private void OnObjectUnregistered(ReplayObjectHandler handler)
         {
-            if (!_active) return;
-            AddEventAtCurrentTick(new ObjectDestroyedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position));
+            // Debug.Log($"[RollbackReplayWriteService] object unregistered, active: {_active}");
+            var destroyEvent = new ObjectDestroyedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position);
+            if (_active)
+                AddEventAtCurrentTick(destroyEvent);
+            else
+                _pendingEvents.Add(destroyEvent);
+        }
+
+        private void OnEventAdded(ReplayEvent evt)
+        {
+            AddEventAtCurrentTick(evt);
         }
 
         private void AddEventAtCurrentTick(ReplayEvent evt)
@@ -98,23 +117,29 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 _eventsByTick[_currentTick] = events;
             }
             events.Add(evt);
+            // Debug.Log($"[RollbackReplayWriteService] Add event {evt.GetType().Name} at tick {_currentTick}");
         }
 
         public void SetCurrentTick(int tick)
         {
+            // if (_active)
+            //     Debug.Log($"[RollbackReplayWriteService] set current tick to {tick}");
             _currentTick = tick;
         }
 
         public void CaptureServerFrame(int tick)
         {
-            if (!_active) return;
-            CaptureFrame(0, tick);
+            if (_active)
+            {
+                // Debug.Log($"[RollbackReplayWriteService] Capture server frame at {tick}");
+                CaptureFrame(0, tick);
+            }
         }
 
         public void CaptureRollbackFrame(int clientId, int tick)
         {
-            if (!_active) return;
-            CaptureFrame(clientId, tick);
+            if (_active)
+                CaptureFrame(clientId, tick);
         }
 
         private void CaptureFrame(int clientId, int tick)
@@ -122,14 +147,36 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             using var stream = new MemoryStream();
             using var binaryWriter = new BinaryWriter(stream);
 
+            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Capture client {clientId} frame");
+            
             var writer = new ReplayWriter(binaryWriter);
             writer.WriteInt(tick);
 
+            _eventsFrameBuffer.Clear();
+            if (_pendingEvents.Count > 0)
+            {
+                bool writePendingEvents = !_replayDataForClients.TryGetValue(clientId, out var frames) || frames.Count == 0;
+                if (writePendingEvents)
+                {
+                    // Debug.Log($"[RollbackReplayWriteService] [{tick}] got {_pendingEvents.Count} pending events for first frame client {clientId}");
+                    _eventsFrameBuffer.AddRange(_pendingEvents);
+                }
+            }
+
             if (_eventsByTick.TryGetValue(tick, out var events))
             {
-                writer.WriteInt(events.Count);
-                foreach (var pendingEvent in events)
+                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Got {events.Count} events for client {clientId}");
+                _eventsFrameBuffer.AddRange(events);
+            }
+
+            if (_eventsFrameBuffer.Count > 0)
+            {
+                writer.WriteInt(_eventsFrameBuffer.Count);
+                foreach (var pendingEvent in _eventsFrameBuffer)
+                {
+                    // Debug.Log($"[RollbackReplayWriteService] [{tick}] Write event {pendingEvent.GetType().Name} to replay for client {clientId}");
                     writer.Write(pendingEvent);
+                }
             }
             else
             {
@@ -140,26 +187,56 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             writer.WriteInt(activeObjects.Count);
             foreach (var handler in activeObjects)
             {
+                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Write object {handler.ObjectId} with prefab {handler.PrefabId} to replay");
                 writer.WriteInt(handler.PrefabId);
                 writer.WriteInt(handler.ObjectId);
                 handler.Write(writer);
             }
 
+            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Write {activeObjects.Count} objects to replay for client {clientId}");
             var frameData = stream.ToArray();
-
+            var currentFrame = new FrameInfo
+            {
+                FrameId = -1,
+                FrameData = frameData
+            };
+            
             if (!_replayDataForClients.TryGetValue(clientId, out var clientFrames))
             {
-                clientFrames = new List<FrameInfo>();
+                clientFrames = new List<(int, FrameInfo)>();
                 _replayDataForClients[clientId] = clientFrames;
             }
 
-            clientFrames.Add(new FrameInfo
-            {
-                FrameId = _frameId,
-                FrameData = frameData
-            });
 
-            _frameId++;
+            bool inserted = false;
+            for (int i = 0; i < clientFrames.Count; i++)
+            {
+                var (frameTick, _) = clientFrames[i];
+                if (frameTick > tick)
+                {
+                    // Debug.Log($"[RollbackReplayWriteService] [{tick}] Insert frame in {i}, next tick: {frameTick}, client {clientId}");
+                    clientFrames.Insert(i, (tick, currentFrame));
+                    inserted = true;
+                    break;
+                }
+            }
+
+            if (!inserted)
+            {
+                clientFrames.Add((tick, currentFrame));
+                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Add frame as {clientFrames.Count}, client {clientId}");
+            }
+
+            int frameId = 0;
+            for (int i = 0; i < clientFrames.Count; i++)
+            {
+                var (frameTick, frame) = clientFrames[i];
+                frame.FrameId = i;
+                frameId = i;
+                clientFrames[i] = (frameTick, frame);
+            }
+            
+            // Debug.Log($"[RollbackReplayWriteService] Frame {frameId} on tick {tick} write {frameData.Length} bytes for client {clientId}, total frames: {clientFrames.Count}");
         }
 
         private void WriteFile()
@@ -193,7 +270,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 writer.Write(clientData.Key);
                 writer.Write(clientData.Value.Count);
                 Debug.Log($"[RollbackReplayWriteService] Client {clientData.Key} has {clientData.Value.Count} frames");
-                var orderedFrames = clientData.Value.OrderBy(x => x.FrameId);
+                var orderedFrames = clientData.Value.Select(x => x.Item2);
                 foreach (var frameInfo in orderedFrames)
                 {
                     writer.Write(frameInfo.FrameId);
