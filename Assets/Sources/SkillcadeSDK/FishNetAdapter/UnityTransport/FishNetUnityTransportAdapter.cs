@@ -68,7 +68,7 @@ namespace SkillcadeSDK.FishNetAdapter
             var port = config.UseEncryption ? config.WssConnectPort : config.ServerListenPort;
 
             Debug.Log($"[FishNetTransportAdapter] Connecting to {config.ServerAddress}:{port}, secure: {config.UseEncryption}");
-            
+
             _transport.UseEncryption = config.UseEncryption;
             _transport.SetPort(port);
             _transport.SetClientAddress(config.ServerAddress);
@@ -81,7 +81,7 @@ namespace SkillcadeSDK.FishNetAdapter
             Debug.Log($"[FishNetTransportAdapter] Starting server at port {config.ServerListenPort}");
             _transport.SetPort(config.ServerListenPort);
             _transport.UseEncryption = false;
-            
+
             _networkManager.ServerManager.StartConnection();
         }
 
