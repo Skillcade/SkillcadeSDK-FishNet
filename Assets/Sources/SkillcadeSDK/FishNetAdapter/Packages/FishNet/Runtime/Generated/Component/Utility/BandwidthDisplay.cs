@@ -193,7 +193,7 @@ namespace FishNet.Component.Utility
             return;
             #endif
             // If release build, check if able to run in release.
-            #if !DEVELOPMENT_BUILD && !UNITY_EDITOR
+            #if !SKILLCADE_DEBUG && !UNITY_EDITOR
             if (!_runInRelease)
                 return;
             #endif

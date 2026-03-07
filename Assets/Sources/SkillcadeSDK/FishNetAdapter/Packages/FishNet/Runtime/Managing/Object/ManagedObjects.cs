@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR || DEVELOPMENT_BUILD
+﻿#if UNITY_EDITOR || SKILLCADE_DEBUG
 #define DEVELOPMENT
 #endif
 using FishNet.Component.Observing;
@@ -440,7 +440,7 @@ namespace FishNet.Managing.Object
 
                 /* Default logging for server is errors only. Use error on client and warning
                  * on servers to reduce chances of allocation attacks. */
-#if DEVELOPMENT_BUILD || UNITY_EDITOR || !UNITY_SERVER
+#if SKILLCADE_DEBUG || UNITY_EDITOR || !UNITY_SERVER
                 NetworkManager.LogError(msg);
 #else
                 NetworkManager.LogWarning(msg);

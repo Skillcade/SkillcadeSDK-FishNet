@@ -36,7 +36,7 @@ namespace FishNet.Managing.Statistic
             statistics = null;
 
             /* Cannot run in the current build type. */
-            #if (!UNITY_EDITOR && !DEVELOPMENT_BUILD) || UNITY_SERVER
+            #if (!UNITY_EDITOR && !SKILLCADE_DEBUG) || UNITY_SERVER
             if (!_runInRelease)
             {
                 _networkTraffic = null;
