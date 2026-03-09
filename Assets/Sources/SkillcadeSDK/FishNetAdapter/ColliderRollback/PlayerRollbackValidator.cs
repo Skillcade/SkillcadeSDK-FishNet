@@ -1,4 +1,3 @@
-using FishNet.Component.ColliderRollback;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using UnityEngine;
@@ -6,9 +5,8 @@ using UnityEngine;
 namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 {
     /// <summary>
-    /// Uses math-based distance checks against rolled-back positions to validate triggers.
-    /// Searches for RollbackTrigger objects within radius _checkRadius of player with offset _checkOffset.
-    /// Passes its own NetworkObject to RollbackTrigger.HandleTriggerServer method.
+    /// Uses math-based distance checks to validate triggers on each rollback tick.
+    /// Iterates all registered RollbackTriggers (both moving and static).
     /// </summary>
     public class PlayerRollbackValidator : MonoBehaviour
     {
@@ -29,20 +27,18 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 
         private void ValidateTriggers(PreciseTick tick)
         {
-            var rollbackPositions = _rollbackSource.LastQueryResults;
-            if (rollbackPositions == null || rollbackPositions.Count == 0)
-                return;
-
             Vector2 playerPos = (Vector2)transform.position + _checkOffset;
-            float sqrRadius = _checkRadius * _checkRadius;
 
-            foreach (var (cr, pos) in rollbackPositions)
+            var allTriggers = RollbackTrigger.AllTriggers;
+            for (int i = 0; i < allTriggers.Count; i++)
             {
-                if ((playerPos - (Vector2)pos).sqrMagnitude > sqrRadius)
+                var trigger = allTriggers[i];
+                float combinedRadius = _checkRadius + trigger.TriggerRadius;
+                Vector2 triggerPos = trigger.GetPosition();
+                if ((playerPos - triggerPos).sqrMagnitude > combinedRadius * combinedRadius)
                     continue;
 
-                if (cr.TryGetComponent(out RollbackTrigger trigger))
-                    trigger.HandleTriggerServer(_networkObject);
+                trigger.HandleTriggerServer(_networkObject);
             }
         }
 
