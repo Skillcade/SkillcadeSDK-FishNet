@@ -7,7 +7,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
     [ReplayDataObjectId(1)]
     public class FishNetRigidbody2dReplayComponent : MonoBehaviour, IReplayComponent
     {
-        public int Size => sizeof(float) * 4;
+        public int Size => sizeof(float) * 2;
 
         [SerializeField] private Rigidbody2D _rigidbody;
 

@@ -1,15 +1,15 @@
+﻿using System;
 using FishNet.Component.ColliderRollback;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using FishNet.Utility.Template;
-using VContainer;
 
-namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
+namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 {
-    public class RollbackReplayTickSender : TickNetworkBehaviour
+    public class PlayerRollbackSource : TickNetworkBehaviour
     {
-        [Inject] private readonly RollbackReplayWriteService _rollbackReplayService;
-
+        public event Action<PreciseTick> OnRollback;
+        
         private void Awake()
         {
             SetTickCallbacks(TickCallback.Tick);
@@ -19,16 +19,16 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         {
             if (!IsOwner)
                 return;
-
+            
             var tick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
-            SendTickServerRpc(tick);
+            PerformRollbackServerRpc(tick);
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void SendTickServerRpc(PreciseTick tick)
+        private void PerformRollbackServerRpc(PreciseTick tick)
         {
             RollbackManager.Rollback(tick, RollbackPhysicsType.Physics2D, IsOwner);
-            _rollbackReplayService.CaptureRollbackFrame(Owner.ClientId, (int)tick.Tick);
+            OnRollback?.Invoke(tick);
             RollbackManager.Return();
         }
     }

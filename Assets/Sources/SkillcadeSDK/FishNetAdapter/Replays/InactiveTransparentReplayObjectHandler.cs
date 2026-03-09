@@ -50,6 +50,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 
         public override void SetVisible(float transparency)
         {
+            // gameObject.SetActive(true);
             foreach (var container in _rendererContainers)
             {
                 var color = container.Renderer.color;
