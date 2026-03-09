@@ -14,7 +14,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
     {
         [Inject] private readonly NetworkDebugConfig _config;
         [Inject] private readonly LatencySimulatorControl _latencyControl;
-        [Inject] private readonly IEnumerable<INetworkDebugDataProvider> _dataProviders;
+        [Inject] private readonly IReadOnlyList<INetworkDebugDataProvider> _dataProviders;
         [Inject] private readonly NetworkDebugPanelView _view;
 
         private bool _isVisible;

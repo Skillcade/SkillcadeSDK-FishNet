@@ -2,6 +2,7 @@
 using SkillcadeSDK.DI;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Controls;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Providers;
+using SkillcadeSDK.FishNetAdapter.DebugPanel.ServerStats;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.StatsOverlay;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Views;
 using UnityEngine;
@@ -21,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             builder.RegisterInstance(_debugPanelView);
 
             builder.Register<NetworkDebugPanel>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
+            builder.Register<ServerPerformanceService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
             
             // Data Providers
             builder.Register<PingDataProvider>(Lifetime.Singleton).AsImplementedInterfaces();
@@ -28,6 +30,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             builder.Register<PacketStatisticsProvider>(Lifetime.Singleton).AsImplementedInterfaces();
             builder.Register<ConnectionDataProvider>(Lifetime.Singleton).AsImplementedInterfaces();
             builder.Register<TimingDataProvider>(Lifetime.Singleton).AsImplementedInterfaces();
+            builder.Register<ServerPerformanceDataProvider>(Lifetime.Singleton).AsImplementedInterfaces();
 
             // Controls
             builder.Register<LatencySimulatorControl>(Lifetime.Singleton);
