@@ -39,6 +39,13 @@ namespace FishNet.Component.ColliderRollback
 
         // PROSTART
 
+        #region Public.
+        /// <summary>
+        /// Last queried rollback position. Updated during QueryRollbackPosition, used by replay system.
+        /// </summary>
+        public Vector3 RollbackPosition { get; private set; }
+        #endregion
+
         #region Private.
         /// <summary>
         /// Rollback data about ColliderParents.
@@ -233,6 +240,47 @@ namespace FishNet.Component.ColliderRollback
                 _rollingColliders[i].Return();
 
             _rolledBack = false;
+        }
+
+        /// <summary>
+        /// Queries the rollback position without moving transforms.
+        /// Updates RollbackPosition property.
+        /// </summary>
+        internal void QueryRollbackPosition(float time)
+        {
+            if (_lerpSnapshotCounter == 0)
+                return;
+
+            FrameRollbackTypes rollbackType;
+            int endFrame;
+            float percent;
+
+            float decimalFrame = time / (float)TimeManager.TickDelta;
+            if (decimalFrame > _lerpSnapshotCounter)
+            {
+                rollbackType = FrameRollbackTypes.Exact;
+                endFrame = _lerpSnapshotCounter - 1;
+                percent = 1f;
+            }
+            else
+            {
+                percent = decimalFrame % 1;
+                endFrame = Mathf.CeilToInt(decimalFrame);
+
+                if (endFrame >= 1)
+                {
+                    rollbackType = FrameRollbackTypes.LerpMiddle;
+                    endFrame = Mathf.CeilToInt(decimalFrame);
+                }
+                else
+                {
+                    endFrame = 0;
+                    rollbackType = FrameRollbackTypes.LerpFirst;
+                }
+            }
+
+            if (_rollingColliders.Count > 0)
+                RollbackPosition = _rollingColliders[0].GetRollbackPosition(rollbackType, endFrame, percent);
         }
 
         /// <summary>

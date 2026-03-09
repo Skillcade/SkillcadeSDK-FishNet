@@ -1,6 +1,7 @@
-﻿using SkillcadeSDK.Replays;
+using FishNet.Component.ColliderRollback;
+using SkillcadeSDK.Replays;
 using SkillcadeSDK.Replays.Components;
-using UnityEngine; 
+using UnityEngine;
 
 namespace SkillcadeSDK.FishNetAdapter.Replays
 {
@@ -10,6 +11,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
         public int Size => sizeof(float) * 2;
 
         [SerializeField] private Rigidbody2D _rigidbody;
+        [SerializeField] private FishNet.Component.ColliderRollback.ColliderRollback _colliderRollback;
 
         public void Read(ReplayReader reader)
         {
@@ -21,7 +23,9 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 
         public void Write(ReplayWriter writer)
         {
-            var position = _rigidbody.position;
+            var position = _colliderRollback != null
+                ? (Vector2)_colliderRollback.RollbackPosition
+                : _rigidbody.position;
             // var velocity = _rigidbody.linearVelocity;
             writer.WriteVector2(position);
             // writer.WriteVector2(velocity);

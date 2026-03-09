@@ -393,6 +393,22 @@ namespace FishNet.Component.ColliderRollback
         //PROEND
 
         /// <summary>
+        /// Queries rollback positions for all registered ColliderRollback objects without moving transforms.
+        /// </summary>
+        public void QueryRollbackPositions(PreciseTick pt, bool asOwnerAndClientHost,
+            List<(ColliderRollback colliderRollback, Vector3 position)> results)
+        {
+            TryUnsetAsOwnerAndClientHost(ref asOwnerAndClientHost);
+            float time = GetRollbackTime(pt, asOwnerAndClientHost);
+
+            foreach (var cr in _allRollbacks)
+            {
+                cr.QueryRollbackPosition(time);
+                results.Add((cr, cr.RollbackPosition));
+            }
+        }
+
+        /// <summary>
         /// Returns all ColliderRollback objects back to their original position.
         /// </summary>
         public void Return()

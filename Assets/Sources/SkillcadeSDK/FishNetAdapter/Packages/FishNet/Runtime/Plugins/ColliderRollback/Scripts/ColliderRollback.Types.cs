@@ -102,6 +102,29 @@ namespace FishNet.Component.ColliderRollback
             }
 
             /// <summary>
+            /// Returns the rolled-back position without moving the transform.
+            /// </summary>
+            public Vector3 GetRollbackPosition(FrameRollbackTypes rollbackType, int endFrame, float percent)
+            {
+                if (rollbackType == FrameRollbackTypes.Exact)
+                {
+                    int index = GetSnapshotIndex(endFrame);
+                    return _snapshots[index].WorldPosition;
+                }
+                else if (rollbackType == FrameRollbackTypes.LerpFirst)
+                {
+                    int index = GetSnapshotIndex(endFrame);
+                    return Vector3.Lerp(_transform.position, _snapshots[index].WorldPosition, percent);
+                }
+                else // LerpMiddle
+                {
+                    int firstFrame = GetSnapshotIndex(endFrame - 1);
+                    int secondFrame = GetSnapshotIndex(endFrame);
+                    return Vector3.Lerp(_snapshots[firstFrame].WorldPosition, _snapshots[secondFrame].WorldPosition, percent);
+                }
+            }
+
+            /// <summary>
             /// Received when Rollback is called on ColliderRollback.
             /// </summary>
             public void Rollback(FrameRollbackTypes rollbackType, int endFrame, float percent)
