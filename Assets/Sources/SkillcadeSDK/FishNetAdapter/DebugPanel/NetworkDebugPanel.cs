@@ -19,7 +19,6 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
 
         private bool _isVisible;
         private float _nextUpdateTime;
-        private readonly Dictionary<string, string> _cachedData = new Dictionary<string, string>();
 
         public void Initialize()
         {
@@ -81,31 +80,11 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             foreach (var provider in _dataProviders)
             {
                 if (provider.IsAvailable)
-                    _cachedData[provider.SectionName] = provider.GetFormattedData();
+                    _view.UpdateSection(provider.SectionName, provider.GetFormattedData());
             }
-
-            if (_config.ShowConnectionSection)
-                _view.UpdateSection("Connection", GetCachedData("Connection"));
-
-            if (_config.ShowTimingSection)
-                _view.UpdateSection("Timing", GetCachedData("Timing"));
-
-            if (_config.ShowPingSection)
-                _view.UpdateSection("Ping / RTT", GetCachedData("Ping / RTT"));
-
-            if (_config.ShowBandwidthSection)
-                _view.UpdateSection("Bandwidth", GetCachedData("Bandwidth"));
-
-            if (_config.ShowPacketStatsSection)
-                _view.UpdateSection("Packet Statistics", GetCachedData("Packet Statistics"));
 
             if (_config.ShowLatencySimulatorSection && _latencyControl != null)
                 _view.UpdateLatencySimulator(_latencyControl);
-        }
-
-        private string GetCachedData(string sectionName)
-        {
-            return _cachedData.GetValueOrDefault(sectionName, "Waiting for data...");
         }
 
         public void Dispose()

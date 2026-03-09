@@ -29,7 +29,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             _connectionController.OnStateChanged += OnConnectionStateChanged;
             
             // Check current state in case we are already connected when this starts
-            if (_connectionController.ConnectionState == ConnectionState.Connected)
+            if (_connectionController.ConnectionState is ConnectionState.Connected or ConnectionState.Hosting)
             {
                 LoadDebugScope();
             }

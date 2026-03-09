@@ -20,6 +20,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         [SerializeField] private DebugSectionView _pingSection;
         [SerializeField] private DebugSectionView _bandwidthSection;
         [SerializeField] private DebugSectionView _packetStatsSection;
+        [SerializeField] private DebugSectionView _serverPerformanceSection;
 
         [Header("Latency Simulator")]
         [SerializeField] private LatencySimulatorView _latencySimulatorView;
@@ -48,6 +49,9 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 
             if (_packetStatsSection != null)
                 _sectionMap["Packet Statistics"] = _packetStatsSection;
+
+            if (_serverPerformanceSection != null)
+                _sectionMap["Server Performance"] = _serverPerformanceSection;
         }
 
         public void UpdateSection(string sectionName, string content)
