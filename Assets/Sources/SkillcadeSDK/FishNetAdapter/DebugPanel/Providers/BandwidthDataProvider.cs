@@ -24,6 +24,19 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
         private ulong _clientOutBytes;
         private ulong _serverInBytes;
         private ulong _serverOutBytes;
+
+        private ulong _clientInAccum;
+        private ulong _clientOutAccum;
+        private ulong _serverInAccum;
+        private ulong _serverOutAccum;
+
+        private ulong _clientInPerSec;
+        private ulong _clientOutPerSec;
+        private ulong _serverInPerSec;
+        private ulong _serverOutPerSec;
+
+        private float _lastResetTime;
+
         private readonly StringBuilder _sb = new StringBuilder(256);
 
         public void Initialize()
@@ -45,12 +58,31 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
             {
                 _serverInBytes = serverTraffic.GetInboundTrafficBytes();
                 _serverOutBytes = serverTraffic.GetOutboundTrafficBytes();
+                _serverInAccum += _serverInBytes;
+                _serverOutAccum += _serverOutBytes;
             }
 
             if (clientTraffic != null)
             {
                 _clientInBytes = clientTraffic.GetInboundTrafficBytes();
                 _clientOutBytes = clientTraffic.GetOutboundTrafficBytes();
+                _clientInAccum += _clientInBytes;
+                _clientOutAccum += _clientOutBytes;
+            }
+
+            float now = UnityEngine.Time.unscaledTime;
+            if (now - _lastResetTime >= 1f)
+            {
+                _clientInPerSec = _clientInAccum;
+                _clientOutPerSec = _clientOutAccum;
+                _serverInPerSec = _serverInAccum;
+                _serverOutPerSec = _serverOutAccum;
+
+                _clientInAccum = 0;
+                _clientOutAccum = 0;
+                _serverInAccum = 0;
+                _serverOutAccum = 0;
+                _lastResetTime = now;
             }
         }
 
@@ -67,14 +99,14 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
 
             if (_networkManager.IsClientStarted)
             {
-                _sb.AppendLine($"Client In:  {FormatBytes(_clientInBytes)}/tick");
-                _sb.AppendLine($"Client Out: {FormatBytes(_clientOutBytes)}/tick");
+                _sb.AppendLine($"Client In:  {FormatBytes(_clientInBytes)}/tick  ({FormatBytes(_clientInPerSec)}/s)");
+                _sb.AppendLine($"Client Out: {FormatBytes(_clientOutBytes)}/tick  ({FormatBytes(_clientOutPerSec)}/s)");
             }
 
             if (_networkManager.IsServerStarted)
             {
-                _sb.AppendLine($"Server In:  {FormatBytes(_serverInBytes)}/tick");
-                _sb.AppendLine($"Server Out: {FormatBytes(_serverOutBytes)}/tick");
+                _sb.AppendLine($"Server In:  {FormatBytes(_serverInBytes)}/tick  ({FormatBytes(_serverInPerSec)}/s)");
+                _sb.AppendLine($"Server Out: {FormatBytes(_serverOutBytes)}/tick  ({FormatBytes(_serverOutPerSec)}/s)");
             }
 
             return _sb.ToString();

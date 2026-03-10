@@ -1,6 +1,5 @@
 #if SKILLCADE_DEBUG
 using System;
-using System.Collections;
 using System.Threading.Tasks;
 using SkillcadeSDK.Connection;
 using UnityEngine;
@@ -31,7 +30,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             // Check current state in case we are already connected when this starts
             if (_connectionController.ConnectionState is ConnectionState.Connected or ConnectionState.Hosting)
             {
-                LoadDebugScope();
+                LoadDebugScope().DoNotAwait();
             }
         }
 
@@ -43,30 +42,24 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
 
         private void OnConnectionStateChanged(ConnectionState state)
         {
-            if (state == ConnectionState.Connected)
-                LoadDebugScope();
+            if (state is ConnectionState.Connected or ConnectionState.Hosting)
+                LoadDebugScope().DoNotAwait();
             else if (state == ConnectionState.Disconnected)
                 UnloadDebugScope();
         }
         
-        private async void LoadDebugScope()
+        private async Task LoadDebugScope()
         {
             if (_isLoaded || string.IsNullOrEmpty(_debugSceneName))
                 return;
 
-            try
+            using (LifetimeScope.EnqueueParent(_parentScope))
             {
-                using (LifetimeScope.EnqueueParent(_parentScope))
-                {
-                    await SceneManager.LoadSceneAsync(_debugSceneName, LoadSceneMode.Additive);
-                }
-                _isLoaded = true;
-                Debug.Log($"[NetworkDebugScopeLoader] Loaded debug scene: {_debugSceneName}");
+                await SceneManager.LoadSceneAsync(_debugSceneName, LoadSceneMode.Additive);
             }
-            catch (Exception e)
-            {
-                Debug.LogError($"[NetworkDebugScopeLoader] Failed to load debug scene '{_debugSceneName}': {e}");
-            }
+            
+            _isLoaded = true;
+            Debug.Log($"[NetworkDebugScopeLoader] Loaded debug scene: {_debugSceneName}");
         }
 
         private void UnloadDebugScope()

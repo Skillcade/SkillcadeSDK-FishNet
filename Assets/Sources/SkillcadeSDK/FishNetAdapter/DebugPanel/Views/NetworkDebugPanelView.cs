@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using SkillcadeSDK.FishNetAdapter.DebugPanel.Controls;
+using SkillcadeSDK.FishNetAdapter.DebugPanel.Providers;
 using UnityEngine;
 using UnityEngine.UI;
+using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 {
@@ -15,49 +17,28 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
         [SerializeField] private Button _closeButton;
 
         [Header("Sections")]
-        [SerializeField] private DebugSectionView _connectionSection;
-        [SerializeField] private DebugSectionView _timingSection;
-        [SerializeField] private DebugSectionView _pingSection;
-        [SerializeField] private DebugSectionView _bandwidthSection;
-        [SerializeField] private DebugSectionView _packetStatsSection;
-        [SerializeField] private DebugSectionView _serverPerformanceSection;
+        [SerializeField] private DebugSectionView _sectionPrefab;
+        [SerializeField] private Transform _sectionsParent;
 
         [Header("Latency Simulator")]
         [SerializeField] private LatencySimulatorView _latencySimulatorView;
-
+        
         private readonly Dictionary<string, DebugSectionView> _sectionMap = new Dictionary<string, DebugSectionView>();
 
         private void Awake()
         {
-            InitializeSectionMap();
             _closeButton.onClick.AddListener(HandleCloseClick);
         }
 
-        private void InitializeSectionMap()
+        public void UpdateSection(INetworkDebugDataProvider sectionProvider)
         {
-            if (_connectionSection != null)
-                _sectionMap["Connection"] = _connectionSection;
-
-            if (_timingSection != null)
-                _sectionMap["Timing"] = _timingSection;
-
-            if (_pingSection != null)
-                _sectionMap["Ping / RTT"] = _pingSection;
-
-            if (_bandwidthSection != null)
-                _sectionMap["Bandwidth"] = _bandwidthSection;
-
-            if (_packetStatsSection != null)
-                _sectionMap["Packet Statistics"] = _packetStatsSection;
-
-            if (_serverPerformanceSection != null)
-                _sectionMap["Server Performance"] = _serverPerformanceSection;
-        }
-
-        public void UpdateSection(string sectionName, string content)
-        {
-            if (_sectionMap.TryGetValue(sectionName, out var section))
-                section.SetContent(content);
+            if (!_sectionMap.TryGetValue(sectionProvider.SectionName, out var section))
+            {
+                section = Instantiate(_sectionPrefab, _sectionsParent);
+                _sectionMap.Add(sectionProvider.SectionName, section);
+            }
+            
+            section.SetContent(sectionProvider.GetFormattedData());
         }
 
         public void SetSectionVisible(string sectionName, bool visible)

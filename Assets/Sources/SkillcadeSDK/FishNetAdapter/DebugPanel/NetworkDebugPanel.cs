@@ -80,7 +80,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel
             foreach (var provider in _dataProviders)
             {
                 if (provider.IsAvailable)
-                    _view.UpdateSection(provider.SectionName, provider.GetFormattedData());
+                    _view.UpdateSection(provider);
             }
 
             if (_config.ShowLatencySimulatorSection && _latencyControl != null)
