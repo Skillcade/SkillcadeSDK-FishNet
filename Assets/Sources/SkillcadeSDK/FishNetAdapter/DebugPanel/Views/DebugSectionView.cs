@@ -7,6 +7,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 {
     public class DebugSectionView : MonoBehaviour
     {
+        [SerializeField] private TMP_Text _nameText;
         [SerializeField] private TMP_Text _contentText;
         [SerializeField] private TMP_Text _collapsedStateText;
         [SerializeField] private Button _collapseButton;
@@ -19,6 +20,11 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             _collapseButton.onClick.AddListener(ToggleCollapse);
             _isCollapsed = true;
             UpdateCollapseState();
+        }
+
+        public void SetName(string value)
+        {
+            _nameText.text = name;
         }
 
         public void SetContent(string content)

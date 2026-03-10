@@ -35,6 +35,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
             if (!_sectionMap.TryGetValue(sectionProvider.SectionName, out var section))
             {
                 section = Instantiate(_sectionPrefab, _sectionsParent);
+                section.SetName(sectionProvider.SectionName);
                 _sectionMap.Add(sectionProvider.SectionName, section);
             }
             

@@ -314,6 +314,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c32f53dc4c623b4f91796f9ee9266ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _nameText: {fileID: 8341580825994329726}
   _contentText: {fileID: 5757067305337089535}
   _collapsedStateText: {fileID: 733944891964046122}
   _collapseButton: {fileID: 5237441778461800169}
