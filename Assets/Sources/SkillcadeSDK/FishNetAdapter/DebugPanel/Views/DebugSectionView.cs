@@ -24,7 +24,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Views
 
         public void SetName(string value)
         {
-            _nameText.text = name;
+            _nameText.text = value;
         }
 
         public void SetContent(string content)
