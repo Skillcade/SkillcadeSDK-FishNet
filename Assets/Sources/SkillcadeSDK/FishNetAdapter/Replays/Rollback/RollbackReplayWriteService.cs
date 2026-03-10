@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
-using NUnit.Framework;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.Replays;
-using SkillcadeSDK.Replays.Components;
 using SkillcadeSDK.Replays.Events;
 using UnityEngine;
 using VContainer;
@@ -51,8 +49,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _replayWriteService.OnWriteStarted += OnWriteStarted;
             _replayWriteService.OnWriteFinished += OnWriteFinished;
             _replayWriteService.OnEventAdded += OnEventAdded;
-            _replayWriteService.OnObjectRegistered += OnObjectRegistered;
-            _replayWriteService.OnObjectUnregistered += OnObjectUnregistered;
         }
 
         public void Dispose()
@@ -60,8 +56,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _replayWriteService.OnWriteStarted -= OnWriteStarted;
             _replayWriteService.OnWriteFinished -= OnWriteFinished;
             _replayWriteService.OnEventAdded -= OnEventAdded;
-            _replayWriteService.OnObjectRegistered -= OnObjectRegistered;
-            _replayWriteService.OnObjectUnregistered -= OnObjectUnregistered;
         }
 
         private void OnWriteStarted()
@@ -84,29 +78,12 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _eventsByTick.Clear();
         }
 
-        private void OnObjectRegistered(ReplayObjectHandler handler)
-        {
-            // Debug.Log($"[RollbackReplayWriteService] object registered, active: {_active}");
-            var createEvent = new ObjectCreatedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position);
-            if (_active)
-                AddEventAtCurrentTick(createEvent);
-            else
-                _pendingEvents.Add(createEvent);
-        }
-
-        private void OnObjectUnregistered(ReplayObjectHandler handler)
-        {
-            // Debug.Log($"[RollbackReplayWriteService] object unregistered, active: {_active}");
-            var destroyEvent = new ObjectDestroyedEvent(handler.ObjectId, handler.PrefabId, handler.transform.position);
-            if (_active)
-                AddEventAtCurrentTick(destroyEvent);
-            else
-                _pendingEvents.Add(destroyEvent);
-        }
-
         private void OnEventAdded(ReplayEvent evt)
         {
-            AddEventAtCurrentTick(evt);
+            if (_active)
+                AddEventAtCurrentTick(evt);
+            else
+                _pendingEvents.Add(evt);
         }
 
         private void AddEventAtCurrentTick(ReplayEvent evt)
@@ -227,12 +204,12 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 // Debug.Log($"[RollbackReplayWriteService] [{tick}] Add frame as {clientFrames.Count}, client {clientId}");
             }
 
-            int frameId = 0;
+            // int frameId = 0;
             for (int i = 0; i < clientFrames.Count; i++)
             {
                 var (frameTick, frame) = clientFrames[i];
                 frame.FrameId = i;
-                frameId = i;
+                // frameId = i;
                 clientFrames[i] = (frameTick, frame);
             }
             
