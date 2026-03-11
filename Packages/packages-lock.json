@@ -1,14 +1,5 @@
 {
   "dependencies": {
-    "com.skillcade.sdk": {
-      "version": "https://github.com/Skillcade/SkillcadeSDK.git?path=Assets/Source/SkillcadeSDK",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.2.1"
-      },
-      "hash": "827b9b27bdb10a7103981a4584ba81b40ec5b647"
-    },
     "com.unity.ai.navigation": {
       "version": "2.0.10",
       "depth": 0,
@@ -105,7 +96,7 @@
     },
     "com.unity.nuget.newtonsoft-json": {
       "version": "3.2.1",
-      "depth": 1,
+      "depth": 0,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"

@@ -1,0 +1,19 @@
+{
+    "name": "SkillcadeSDK.Editor",
+    "rootNamespace": "SkillcadeSDK.Editor",
+    "references": [
+        "GUID:b0214a6008ed146ff8f122a6a9c2f6cc",
+        "GUID:7fe7230c41c698844b1bed0409887cad"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
