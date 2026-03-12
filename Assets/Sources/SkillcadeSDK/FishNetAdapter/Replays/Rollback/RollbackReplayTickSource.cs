@@ -38,7 +38,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                     return;
             }
             
-            _rollbackReplayService.CaptureRollbackFrame(_networkObject.Owner.ClientId, (int)tick.Tick);
+            _rollbackReplayService.CaptureRollbackFrame(_networkObject.Owner.ClientId, (int)_networkObject.TimeManager.Tick);
         }
     }
 }
