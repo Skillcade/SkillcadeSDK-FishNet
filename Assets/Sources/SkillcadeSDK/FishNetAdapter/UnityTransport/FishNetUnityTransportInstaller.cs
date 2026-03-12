@@ -8,7 +8,7 @@ namespace SkillcadeSDK.FishNetAdapter
     public class FishNetUnityTransportInstaller : MonoInstaller
     {
         [SerializeField] private UnityTransport _transport;
-        
+
         public override void Install(IContainerBuilder builder)
         {
             builder.RegisterInstance(_transport);
