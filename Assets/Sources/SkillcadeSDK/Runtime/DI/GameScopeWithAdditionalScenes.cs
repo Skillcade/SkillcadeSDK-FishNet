@@ -10,13 +10,14 @@ namespace SkillcadeSDK.DI
     public class GameScopeWithAdditionalScenes : LifetimeScope
     {
         [SerializeField] private string[] _sceneNames;
-        [SerializeField] private MonoInstaller[] _rootInstallers;
         [SerializeField] private ConnectionConfig _connectionConfig;
         
         private List<MonoInstaller> _loadedInstallers;
         
         protected override void Awake()
         {
+            _loadedInstallers = new List<MonoInstaller>();
+            _loadedInstallers.AddRange(GetComponents<MonoInstaller>());
             LoadScenesAndBuildAsync();
         }
 
@@ -38,7 +39,6 @@ namespace SkillcadeSDK.DI
                 await SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
             }
 
-            _loadedInstallers = new List<MonoInstaller>();
             foreach (var sceneName in uniqueScenes)
             {
                 var scene = SceneManager.GetSceneByName(sceneName);
@@ -77,12 +77,6 @@ namespace SkillcadeSDK.DI
                 builder.RegisterInstance(_connectionConfig);
             }
             
-            foreach (var installer in _rootInstallers)
-            {
-                Debug.Log($"[GameScopeWithAdditionalScenes] install {installer.GetType().Name}");
-                installer.Install(builder);
-            }
-            
             foreach (var installer in _loadedInstallers)
             {
                 Debug.Log($"[GameScopeWithAdditionalScenes] install {installer.GetType().Name}");
@@ -92,14 +86,6 @@ namespace SkillcadeSDK.DI
 
         private void AutoInjectTargets(IObjectResolver objectResolver)
         {
-            foreach (var installer in _rootInstallers)
-            {
-                foreach (var autoInjectGameObject in installer.GetAutoInjectGameObjects())
-                {
-                    objectResolver.InjectGameObject(autoInjectGameObject);
-                }
-            }
-            
             foreach (var installer in _loadedInstallers)
             {
                 foreach (var autoInjectGameObject in installer.GetAutoInjectGameObjects())
