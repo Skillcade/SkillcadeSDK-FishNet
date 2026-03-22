@@ -3,10 +3,8 @@
     "rootNamespace": "SkillcadeSDK.FishNetAdapter",
     "references": [
         "GUID:b0214a6008ed146ff8f122a6a9c2f6cc",
-        "GUID:ac553197a0f957a41b3967c536c45cba",
         "GUID:7c88a4a7926ee5145ad2dfa06f454c67",
-        "GUID:89f02af76d99c544b99514bebe98b84e",
-        "GUID:bd809a54d932a8f4ca029ba33938a03d"
+        "GUID:7fe7230c41c698844b1bed0409887cad"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
