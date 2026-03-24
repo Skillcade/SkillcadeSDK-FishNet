@@ -32,6 +32,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
+        [Inject] private readonly ReplaySendService _replaySendService;
 #endif
 
         private readonly Dictionary<int, List<(int, FrameInfo)>> _replayDataForClients = new();
@@ -257,6 +258,10 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
 
             Debug.Log($"[RollbackReplayWriteService] Rollback replay for {_replayDataForClients.Count} clients was written to {filePath}");
+#if UNITY_SERVER || UNITY_EDITOR
+            if (_serverPayloadController.Payload != null)
+                _replaySendService.SendReplayFile(filePath).DoNotAwait();
+#endif
         }
     }
 }
