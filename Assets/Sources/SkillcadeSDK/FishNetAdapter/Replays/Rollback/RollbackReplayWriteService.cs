@@ -24,8 +24,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             public byte[] FrameData;
         }
 
-        private const string FileName = "replay-new.replay";
-
         [Inject] private readonly ReplayWriteService _replayWriteService;
         [Inject] private readonly GameVersionConfig _gameVersionConfig;
         [Inject] private readonly IConnectionController _connectionController;
@@ -219,7 +217,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void WriteFile()
         {
-            var filePath = Path.Combine(Application.streamingAssetsPath, FileName);
+            var filePath = Path.Combine(Application.streamingAssetsPath, ReplayWriteService.GetFileName());
             using var stream = new FileStream(filePath, FileMode.Create);
             var writer = new BinaryWriter(stream);
 
