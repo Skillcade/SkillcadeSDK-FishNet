@@ -390,7 +390,7 @@ namespace FishNet.Object
              * as emptyNetworkBehaviour is added automatically when none are present. */
             if (!_hasBeenInitialized && SceneId == UNSET_SCENEID_VALUE)
             {
-                NetworkManager.LogError($"NetworkObject {this.ToString()} is expected to be initialized but was not. Exit play-mode, use the Fish-Networking menu > Utility > Reserialize NetworkObjects > and Reserialize Prefabs. Choose to Reserialize Scenes as well if this is a scene object.");
+                NetworkManager.LogWarning($"NetworkObject {this.ToString()} is expected to be initialized but was not. Exit play-mode, use the Fish-Networking menu > Utility > Reserialize NetworkObjects > and Reserialize Prefabs. Choose to Reserialize Scenes as well if this is a scene object.");
                 return;
             }
 

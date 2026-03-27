@@ -239,6 +239,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             var infoJsonBytes = System.Text.Encoding.UTF8.GetBytes(infoJson);
             writer.Write(infoJsonBytes.Length);
             writer.Write(infoJsonBytes);
+            Debug.Log($"[RollbackReplayWriteService] write info json {infoJsonBytes.Length} bytes");
             writer.Write(_replayDataForClients.Count);
 
             foreach (var clientData in _replayDataForClients)
@@ -247,11 +248,14 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 writer.Write(clientData.Value.Count);
                 Debug.Log($"[RollbackReplayWriteService] Client {clientData.Key} has {clientData.Value.Count} frames");
                 var orderedFrames = clientData.Value.Select(x => x.Item2);
+                int i = 0;
                 foreach (var frameInfo in orderedFrames)
                 {
                     writer.Write(frameInfo.FrameId);
                     writer.Write(frameInfo.FrameData.Length);
                     writer.Write(frameInfo.FrameData);
+                    Debug.Log($"[RollbackReplayWriteService] Frame {i} - {frameInfo.FrameId} write {frameInfo.FrameData.Length} bytes");
+                    i++;
                 }
             }
 

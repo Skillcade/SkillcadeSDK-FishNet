@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using FishNet.Object;
 using FishNet.Utility.Template;
+using SkillcadeSDK;
+using SkillcadeSDK.FishNetAdapter.Players;
 using UnityEngine;
+using VContainer;
 
 namespace Game.RigidbodyInterpolation
 {
@@ -13,6 +16,13 @@ namespace Game.RigidbodyInterpolation
     [DisallowMultipleComponent]
     public class NetworkRigidbody2DInterpolator : TickNetworkBehaviour
     {
+        private enum State
+        {
+            None,
+            Replaying,
+            Online,
+        }
+        
         /// <summary>
         /// Snapshot storing a rigidbody position at a specific point in time.
         /// Implements <see cref="IInterpolateSnapshot"/> so it can be used with <see cref="InterpolationUtils"/>.
@@ -30,14 +40,16 @@ namespace Game.RigidbodyInterpolation
         [SerializeField] private NetworkObject _networkObject;
         [SerializeField] private Rigidbody2D _rigidbody;
         [SerializeField] private Transform _visualTransform;
-        [SerializeField] private bool _detachVisuals;
 
         [Header("Timeline")]
         [SerializeField] private SnapshotInterpolationSettings _interpolationSettings;
 
         private float BufferTime => InterpolationUtils.SendInterval * _bufferTimeMultiplier;
 
-        private Transform _visualsParent;
+        [Inject] private readonly IObjectResolver _objectResolver;
+
+        private State _state;
+        
         private Vector2 _visualWorldOffset;
         private float _visualZOffset;
 
@@ -45,12 +57,21 @@ namespace Game.RigidbodyInterpolation
         private SortedList<float, TimeSnapshot> _timeBuffer;
         private SortedList<float, PositionSnapshot> _positionBuffer;
 
+        private uint _fixedUpdateTick;
+        
         // Timeline state
         private float _localTimeline;
         private float _localTimescale = 1f;
         private float _bufferTimeMultiplier;
         private ExponentalMovingAverage _driftEma;
         private ExponentalMovingAverage _deliveryTimeEma;
+
+        private void Start()
+        {
+            InitializeBuffers();
+            CacheVisualOffsets();
+            ApplyVisualPosition(_rigidbody.position);
+        }
 
         /// <summary>
         /// Applies a force to the underlying Rigidbody2D.
@@ -82,28 +103,16 @@ namespace Game.RigidbodyInterpolation
             ApplyVisualPosition(position);
         }
 
-        public override void OnStartNetwork()
-        {
-            base.OnStartNetwork();
-            
-            InitializeBuffers();
-            CacheVisualOffsets();
-            ApplyVisualPosition(_rigidbody.position);
-            
-            _visualsParent = _visualTransform.parent;
-            if (Owner.IsLocalClient && _detachVisuals)
-                _visualTransform.parent = null;
-        }
-
-        public override void OnStopNetwork()
-        {
-            if (IsOwner && _detachVisuals)
-                _visualTransform.parent = _visualsParent;
-        }
-
         protected override void TimeManager_OnPostTick()
         {
             AddSnapshot();
+        }
+
+        private void FixedUpdate()
+        {
+            _fixedUpdateTick++;
+            if (_state == State.Replaying)
+                AddSnapshot();
         }
 
         /// <summary>
@@ -122,9 +131,9 @@ namespace Game.RigidbodyInterpolation
                     _interpolationSettings.DynamicAdjustmentTolerance);
             }
 
-            var tick = _networkObject.TimeManager.LocalTick;
-            float remoteTime = (float)_networkObject.TimeManager.TicksToTime(tick);
-            float localTime = _networkObject.TimeManager.ClientUptime;
+            var tick = _state == State.Online ? _networkObject.TimeManager.LocalTick : _fixedUpdateTick;
+            float remoteTime = _state == State.Online ? (float)_networkObject.TimeManager.TicksToTime(tick) : Time.fixedTime;
+            float localTime = _state == State.Online ? _networkObject.TimeManager.ClientUptime : Time.time;
 
             var timeSnapshot = new TimeSnapshot(remoteTime, localTime);
             InterpolationUtils.InsertAndAdjust(
@@ -147,7 +156,13 @@ namespace Game.RigidbodyInterpolation
         /// </summary>
         private void Update()
         {
-            if (!IsOwner)
+            if (_objectResolver == null)
+                this.InjectToMe();
+
+            if (_state == State.None && _objectResolver.TryResolve(out FishNetPlayersController _))
+                _state = State.Online;
+            
+            if (_state != State.Online || !IsOwner)
                 return;
 
             if (_timeBuffer.Count > 0)
