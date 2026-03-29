@@ -230,6 +230,19 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 Directory.CreateDirectory(Application.streamingAssetsPath);
             
             var filePath = Path.Combine(Application.streamingAssetsPath, ReplayWriteService.GetFileName());
+            WriteReplay(filePath);
+            
+#if UNITY_SERVER || UNITY_EDITOR
+            if (_serverPayloadController.Payload != null)
+            {
+                _replaySendService.Reset();
+                _replaySendService.SendReplayFile(filePath).DoNotAwait();
+            }
+#endif
+        }
+
+        private void WriteReplay(string filePath)
+        {
             using var stream = new FileStream(filePath, FileMode.Create);
             using var writer = new BinaryWriter(stream);
 
@@ -275,13 +288,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
 
             Debug.Log($"[RollbackReplayWriteService] Rollback replay for {_replayDataForClients.Count} clients was written to {filePath}");
-#if UNITY_SERVER || UNITY_EDITOR
-            if (_serverPayloadController.Payload != null)
-            {
-                _replaySendService.Reset();
-                _replaySendService.SendReplayFile(filePath).DoNotAwait();
-            }
-#endif
         }
     }
 }
