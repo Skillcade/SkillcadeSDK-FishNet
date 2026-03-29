@@ -68,7 +68,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void OnWriteFinished(bool asServer)
         {
-            // Debug.Log("[RollbackReplayWriteService] Write finished");
+            Debug.Log("[RollbackReplayWriteService] Write finished");
             if (asServer && _connectionController.ConnectionState != ConnectionState.SinglePlayer)
             {
                 try
@@ -277,7 +277,10 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             Debug.Log($"[RollbackReplayWriteService] Rollback replay for {_replayDataForClients.Count} clients was written to {filePath}");
 #if UNITY_SERVER || UNITY_EDITOR
             if (_serverPayloadController.Payload != null)
+            {
+                _replaySendService.Reset();
                 _replaySendService.SendReplayFile(filePath).DoNotAwait();
+            }
 #endif
         }
     }

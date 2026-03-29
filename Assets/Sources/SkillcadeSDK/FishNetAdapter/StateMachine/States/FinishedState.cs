@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using SkillcadeSDK.Common;
 using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Connection;
@@ -6,6 +7,10 @@ using SkillcadeSDK.FishNetAdapter.Match;
 using SkillcadeSDK.StateMachine;
 using UnityEngine;
 using VContainer;
+
+#if UNITY_SERVER || UNITY_EDITOR
+using SkillcadeSDK.Replays;
+#endif
 
 namespace SkillcadeSDK.FishNetAdapter.States
 {
@@ -23,6 +28,10 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly MatchService _matchService;
         [Inject] private readonly GameEventBus _eventBus;
         [Inject] private readonly IConnectionController _connectionController;
+        
+#if UNITY_SERVER || UNITY_EDITOR
+        [Inject] private readonly ReplaySendService _replaySendService;
+#endif
 
         private float _timer;
 
@@ -32,14 +41,14 @@ namespace SkillcadeSDK.FishNetAdapter.States
 
             _timer = _config.WaitAfterFinishSeconds;
 
-            if (IsServer)
-            {
-                _matchService.SendWinnerToBackend(data.WinnerClientId).DoNotAwait();
-                _playerSpawner.EnsurePlayersDespawned();
-            }
-
             // Publish event with winner id
             _eventBus.Publish(new GameFinishedEvent(data.WinnerClientId, data.FinishReason));
+            
+            if (IsServer)
+            {
+                WaitForReplaySendAndSendWinner(data.WinnerClientId).DoNotAwait();
+                _playerSpawner.EnsurePlayersDespawned();
+            }
         }
 
         public override void Update()
@@ -54,6 +63,19 @@ namespace SkillcadeSDK.FishNetAdapter.States
             {
                 StateMachine.SetStateServer(GameStateType.WaitForPlayers);
             }
+        }
+
+        private async Task WaitForReplaySendAndSendWinner(int winnerId)
+        {
+            Debug.Log("[FinishedState] Sending replays and winner");
+#if UNITY_SERVER || UNITY_EDITOR
+            Debug.Log("[FinishedState] Waiting for replays");
+            await _replaySendService.WaitForReplaySent();
+            Debug.Log("[FinishedState] Replays sent");
+#endif
+            await Task.Delay(5000);
+            Debug.Log("[FinishedState] Send winner");
+            await _matchService.SendWinnerToBackend(winnerId);
         }
     }
 }
