@@ -70,7 +70,16 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         {
             // Debug.Log("[RollbackReplayWriteService] Write finished");
             if (asServer && _connectionController.ConnectionState != ConnectionState.SinglePlayer)
-                WriteFile();
+            {
+                try
+                {
+                    WriteFile();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[RollbackReplayWriteService] Error on writing replay file: {e}");
+                }
+            }
 
             _active = false;
             _replayDataForClients.Clear();
@@ -217,9 +226,12 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void WriteFile()
         {
+            if (!Directory.Exists(Application.streamingAssetsPath))
+                Directory.CreateDirectory(Application.streamingAssetsPath);
+            
             var filePath = Path.Combine(Application.streamingAssetsPath, ReplayWriteService.GetFileName());
             using var stream = new FileStream(filePath, FileMode.Create);
-            var writer = new BinaryWriter(stream);
+            using var writer = new BinaryWriter(stream);
 
             var info = new ReplayInfo
             {
@@ -246,17 +258,20 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             {
                 writer.Write(clientData.Key);
                 writer.Write(clientData.Value.Count);
-                Debug.Log($"[RollbackReplayWriteService] Client {clientData.Key} has {clientData.Value.Count} frames");
                 var orderedFrames = clientData.Value.Select(x => x.Item2);
                 int i = 0;
+                int totalBytes = 0;
                 foreach (var frameInfo in orderedFrames)
                 {
                     writer.Write(frameInfo.FrameId);
                     writer.Write(frameInfo.FrameData.Length);
                     writer.Write(frameInfo.FrameData);
-                    Debug.Log($"[RollbackReplayWriteService] Frame {i} - {frameInfo.FrameId} write {frameInfo.FrameData.Length} bytes");
+                    totalBytes += frameInfo.FrameData.Length + 8;
+                    // Debug.Log($"[RollbackReplayWriteService] Frame {i} - {frameInfo.FrameId} write {frameInfo.FrameData.Length} bytes");
                     i++;
                 }
+                
+                Debug.Log($"[RollbackReplayWriteService] Client {clientData.Key} has {clientData.Value.Count} frames with total bytes: {totalBytes}");
             }
 
             Debug.Log($"[RollbackReplayWriteService] Rollback replay for {_replayDataForClients.Count} clients was written to {filePath}");

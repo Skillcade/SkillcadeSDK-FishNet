@@ -66,8 +66,9 @@ namespace Game.RigidbodyInterpolation
         private ExponentalMovingAverage _driftEma;
         private ExponentalMovingAverage _deliveryTimeEma;
 
-        private void Start()
+        public override void OnStartNetwork()
         {
+            base.OnStartNetwork();
             InitializeBuffers();
             CacheVisualOffsets();
             ApplyVisualPosition(_rigidbody.position);
