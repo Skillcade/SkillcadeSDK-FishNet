@@ -408,6 +408,14 @@ namespace FishNet.Component.ColliderRollback
             }
         }
 
+        public void RevertRollbackPositions()
+        {
+            foreach (var cr in _allRollbacks)
+            {
+                cr.RevertRollbackPosition();
+            }
+        }
+
         /// <summary>
         /// Returns all ColliderRollback objects back to their original position.
         /// </summary>

@@ -20,7 +20,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
         [Inject] private readonly IObjectResolver _objectResolver;
         
         private readonly Dictionary<int, PlayerData> _playersData = new();
-        
+
         public void SetPlayerData(int playerNetworkId, int playerObjectId, string nickname, string playerId)
         {
             if (_playersData.ContainsKey(playerNetworkId))
@@ -58,6 +58,11 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
                     return;
                 }
             }
+        }
+
+        public void ClearPlayers()
+        {
+            _playersData.Clear();
         }
     }
 }

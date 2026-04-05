@@ -27,6 +27,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         [Inject] private readonly ReplayWriteService _replayWriteService;
         [Inject] private readonly GameVersionConfig _gameVersionConfig;
         [Inject] private readonly IConnectionController _connectionController;
+        [Inject] private readonly FishNetReplayPlayerDataService _fishNetReplayPlayerDataService;
 
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
@@ -84,6 +85,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _active = false;
             _replayDataForClients.Clear();
             _eventsByTick.Clear();
+            _fishNetReplayPlayerDataService.ClearPlayers();
         }
 
         private void OnEventAdded(ReplayEvent evt)
@@ -121,7 +123,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
         }
 
-        public void CaptureRollbackFrame(int clientId, int tick)
+        public void CaptureClientFrame(int clientId, int tick)
         {
             if (_active)
                 CaptureFrame(clientId, tick);
@@ -178,50 +180,20 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 handler.Write(writer);
             }
 
-            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Write {activeObjects.Count} objects to replay for client {clientId}");
             var frameData = stream.ToArray();
-            var currentFrame = new FrameInfo
-            {
-                FrameId = -1,
-                FrameData = frameData
-            };
-            
+
             if (!_replayDataForClients.TryGetValue(clientId, out var clientFrames))
             {
                 clientFrames = new List<(int, FrameInfo)>();
                 _replayDataForClients[clientId] = clientFrames;
             }
 
-
-            bool inserted = false;
-            for (int i = 0; i < clientFrames.Count; i++)
+            var currentFrame = new FrameInfo
             {
-                var (frameTick, _) = clientFrames[i];
-                if (frameTick > tick)
-                {
-                    // Debug.Log($"[RollbackReplayWriteService] [{tick}] Insert frame in {i}, next tick: {frameTick}, client {clientId}");
-                    clientFrames.Insert(i, (tick, currentFrame));
-                    inserted = true;
-                    break;
-                }
-            }
-
-            if (!inserted)
-            {
-                clientFrames.Add((tick, currentFrame));
-                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Add frame as {clientFrames.Count}, client {clientId}");
-            }
-
-            // int frameId = 0;
-            for (int i = 0; i < clientFrames.Count; i++)
-            {
-                var (frameTick, frame) = clientFrames[i];
-                frame.FrameId = i;
-                // frameId = i;
-                clientFrames[i] = (frameTick, frame);
-            }
-            
-            // Debug.Log($"[RollbackReplayWriteService] Frame {frameId} on tick {tick} write {frameData.Length} bytes for client {clientId}, total frames: {clientFrames.Count}");
+                FrameId = clientFrames.Count,
+                FrameData = frameData
+            };
+            clientFrames.Add((tick, currentFrame));
         }
 
         private void WriteFile()

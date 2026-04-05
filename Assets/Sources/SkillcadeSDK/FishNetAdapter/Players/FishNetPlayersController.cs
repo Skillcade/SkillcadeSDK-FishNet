@@ -104,6 +104,18 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             return false;
         }
 
+        public bool TryGetLocalPlayerData(out FishNetPlayerData data)
+        {
+            data = null;
+            if (NetworkManager == null || NetworkManager.ClientManager == null)
+                return false;
+
+            if (NetworkManager.ClientManager.Connection == null)
+                return false;
+            
+            return TryGetPlayerData(NetworkManager.ClientManager.Connection.ClientId, out data);
+        }
+
         public IEnumerable<FishNetPlayerData> GetAllPlayersData() => _players.Values;
 
         private void OnPlayerDataChanged(FishNetPlayerData playerData)
@@ -147,7 +159,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            if (!_players.TryGetValue(LocalPlayerId, out var playerData))
+            if (!TryGetLocalPlayerData(out var playerData))
                 return;
 
             var data = new PlayerMatchData

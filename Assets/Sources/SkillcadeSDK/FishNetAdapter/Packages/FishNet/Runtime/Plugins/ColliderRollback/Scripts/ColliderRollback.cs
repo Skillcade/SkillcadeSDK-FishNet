@@ -40,10 +40,14 @@ namespace FishNet.Component.ColliderRollback
         // PROSTART
 
         #region Public.
+
         /// <summary>
         /// Last queried rollback position. Updated during QueryRollbackPosition, used by replay system.
         /// </summary>
-        public Vector3 RollbackPosition { get; private set; }
+        public Vector3 RollbackPosition => _rollbackPositionSet ? _rollbackPosition : transform.position;
+
+        private Vector3 _rollbackPosition;
+        private bool _rollbackPositionSet;
         #endregion
 
         #region Private.
@@ -280,7 +284,15 @@ namespace FishNet.Component.ColliderRollback
             }
 
             if (_rollingColliders.Count > 0)
-                RollbackPosition = _rollingColliders[0].GetRollbackPosition(rollbackType, endFrame, percent);
+            {
+                _rollbackPosition = _rollingColliders[0].GetRollbackPosition(rollbackType, endFrame, percent);
+                _rollbackPositionSet = true;
+            }
+        }
+
+        internal void RevertRollbackPosition()
+        {
+            _rollbackPositionSet = false;
         }
 
         /// <summary>

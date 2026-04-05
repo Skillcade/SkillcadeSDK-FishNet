@@ -10,6 +10,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 {
     public class PlayerRollbackSource : TickNetworkBehaviour
     {
+        public Vector2? PlayerOwnerPosition;
         public event Action<PreciseTick> OnRollback;
 
         public new RollbackManager RollbackManager => base.RollbackManager;
@@ -35,18 +36,22 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
                 return;
 
             var tick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
-            PerformRollbackServerRpc(tick);
+            PerformRollbackServerRpc(tick, transform.position);
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void PerformRollbackServerRpc(PreciseTick tick)
+        private void PerformRollbackServerRpc(PreciseTick tick, Vector2 playerPosition)
         {
+            PlayerOwnerPosition = playerPosition;
+            
             _queryResults ??= new();
             _queryResults.Clear();
 
             RollbackManager.QueryRollbackPositions(tick, IsOwner, _queryResults);
 
             OnRollback?.Invoke(tick);
+            RollbackManager.RevertRollbackPositions();
+            PlayerOwnerPosition = null;
         }
     }
 }

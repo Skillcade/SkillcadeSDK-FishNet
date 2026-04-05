@@ -38,8 +38,5 @@ namespace Game.RigidbodyInterpolation
 
         /// <summary>Window size (in send intervals) for the delivery time EMA. Used by dynamic adjustment.</summary>
         [SerializeField] public int DeliveryTimeEmaDuration;
-
-        /// <summary>Additional offset applied to the remote buffer. Reserved for future use.</summary>
-        [SerializeField] public int RemoteBufferOffset;
     }
 }
