@@ -35,6 +35,7 @@ namespace Game.RigidbodyInterpolation
         }
 
         public Rigidbody2D Rigidbody => _rigidbody;
+        public bool Ignore { get; set; }
 
         [Header("References")]
         [SerializeField] private NetworkObject _networkObject;
@@ -49,9 +50,6 @@ namespace Game.RigidbodyInterpolation
         [Inject] private readonly IObjectResolver _objectResolver;
 
         private State _state;
-        
-        private Vector2 _visualWorldOffset;
-        private float _visualZOffset;
 
         // Buffers
         private SortedList<float, TimeSnapshot> _timeBuffer;
@@ -70,7 +68,6 @@ namespace Game.RigidbodyInterpolation
         {
             base.OnStartNetwork();
             InitializeBuffers();
-            CacheVisualOffsets();
             ApplyVisualPosition(_rigidbody.position);
         }
 
@@ -178,6 +175,12 @@ namespace Game.RigidbodyInterpolation
                 return;
             }
 
+            if (_interpolationSettings.TeleportBufferThreshold > 0 && _positionBuffer.Count >= _interpolationSettings.TeleportBufferThreshold)
+            {
+                Teleport(_rigidbody.position);
+                return;
+            }
+
             InterpolationUtils.StepInterpolation(
                 _positionBuffer, _localTimeline,
                 out var from, out var to, out float t);
@@ -207,6 +210,7 @@ namespace Game.RigidbodyInterpolation
         /// </summary>
         private void ResetBuffers()
         {
+            Ignore = false;
             _timeBuffer.Clear();
             _positionBuffer.Clear();
             _localTimeline = 0;
@@ -217,29 +221,21 @@ namespace Game.RigidbodyInterpolation
         }
 
         /// <summary>
-        /// Captures the world-space offset between the rigidbody and the visual transform
-        /// so the visual can be positioned correctly even when detached from the hierarchy.
-        /// </summary>
-        private void CacheVisualOffsets()
-        {
-            Vector3 rigidbodyWorld = _rigidbody.transform.position;
-            Vector3 visualWorld = _visualTransform.position;
-
-            _visualWorldOffset = new Vector2(visualWorld.x - rigidbodyWorld.x, visualWorld.y - rigidbodyWorld.y);
-            _visualZOffset = visualWorld.z - rigidbodyWorld.z;
-        }
-
-        /// <summary>
-        /// Moves the detached visual transform to the given world position,
+        /// Moves the visual transform to the given world position,
         /// preserving the cached offset and Z depth.
         /// </summary>
         private void ApplyVisualPosition(Vector2 worldPosition)
         {
-            float z = _rigidbody.transform.position.z + _visualZOffset;
+            if (Ignore)
+            {
+                _visualTransform.localPosition = Vector3.zero;
+                return;
+            }
+            
             _visualTransform.position = new Vector3(
-                worldPosition.x + _visualWorldOffset.x,
-                worldPosition.y + _visualWorldOffset.y,
-                z);
+                worldPosition.x,
+                worldPosition.y,
+                _rigidbody.transform.position.z);
         }
     }
 }

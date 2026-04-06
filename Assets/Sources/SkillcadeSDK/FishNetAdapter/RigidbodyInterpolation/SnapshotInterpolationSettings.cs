@@ -9,34 +9,37 @@ namespace Game.RigidbodyInterpolation
     [CreateAssetMenu(fileName = "SnapshotInterpolationSettings", menuName = "Configs/Snapshot Interpolation Settings")]
     public class SnapshotInterpolationSettings : ScriptableObject
     {
-        /// <summary>How many send intervals the buffer lags behind remote time. Higher = more latency but smoother.</summary>
+        [Tooltip("How many send intervals the buffer lags behind remote time. Higher = more latency but smoother.")]
         [SerializeField] public float BufferTimeMultiplier;
 
-        /// <summary>Maximum number of snapshots stored in each buffer. Older snapshots are discarded when exceeded.</summary>
+        [Tooltip("Maximum number of snapshots stored in each buffer. Older snapshots are discarded when exceeded.")]
         [SerializeField] public int BufferLimit;
 
-        /// <summary>Drift threshold (in send intervals) below which the timeline slows down to avoid running ahead.</summary>
+        [Tooltip("Drift threshold (in send intervals) below which the timeline slows down to avoid running ahead.")]
         [SerializeField] public float CatchupNegativeThreshold;
 
-        /// <summary>Drift threshold (in send intervals) above which the timeline speeds up to catch up.</summary>
+        [Tooltip("Drift threshold (in send intervals) above which the timeline speeds up to catch up.")]
         [SerializeField] public float CatchupPositiveThreshold;
 
-        /// <summary>How much faster the timeline runs when catching up (added to timescale 1.0).</summary>
+        [Tooltip("How much faster the timeline runs when catching up (added to timescale 1.0).")]
         [SerializeField] public float CatchupSpeed;
 
-        /// <summary>How much slower the timeline runs when slowing down (subtracted from timescale 1.0).</summary>
+        [Tooltip("How much slower the timeline runs when slowing down (subtracted from timescale 1.0).")]
         [SerializeField] public float SlowDownSpeed;
 
-        /// <summary>Window size (in send intervals) for the drift EMA. Larger = smoother drift estimation.</summary>
+        [Tooltip("Window size (in send intervals) for the drift EMA. Larger = smoother drift estimation.")]
         [SerializeField] public int DriftEmaDuration;
 
-        /// <summary>Whether to dynamically adjust buffer time based on delivery jitter.</summary>
+        [Tooltip("Whether to dynamically adjust buffer time based on delivery jitter.")]
         [SerializeField] public bool DynamicAdjustment;
 
-        /// <summary>Tolerance added to the dynamic buffer multiplier. Higher = more safety margin against jitter.</summary>
+        [Tooltip("Tolerance added to the dynamic buffer multiplier. Higher = more safety margin against jitter.")]
         [SerializeField] public float DynamicAdjustmentTolerance;
 
-        /// <summary>Window size (in send intervals) for the delivery time EMA. Used by dynamic adjustment.</summary>
+        [Tooltip("Window size (in send intervals) for the delivery time EMA. Used by dynamic adjustment.")]
         [SerializeField] public int DeliveryTimeEmaDuration;
+
+        [Tooltip("Buffer size, above which player will be instantly teleported to current position, to avoid creating too big buffer")]
+        [SerializeField] public int TeleportBufferThreshold;
     }
 }
