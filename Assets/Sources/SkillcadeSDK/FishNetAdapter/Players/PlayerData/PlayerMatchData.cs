@@ -13,8 +13,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         
         public void Write(Writer writer)
         {
-            writer.Write(Nickname);
-            writer.Write(PlayerId);
+            writer.WriteString(Nickname);
+            writer.WriteString(PlayerId);
         }
 
         public void Read(Reader reader)
