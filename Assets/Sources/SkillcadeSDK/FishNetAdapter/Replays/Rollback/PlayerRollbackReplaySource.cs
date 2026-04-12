@@ -34,7 +34,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             if (!_objectResolver.TryResolve(out RollbackReplayWriteService writeService))
                 return;
 
-            writeService.CaptureClientFrame(OwnerId, (int)TimeManager.Tick);
+            writeService.CaptureClientFrame(OwnerId, (int)tick.Tick);
         }
     }
 }

@@ -31,6 +31,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             var tick = (int)TimeManager.Tick;
             _rollbackReplayService.SetCurrentTick(tick);
 
+            // Debug.Log($"[RollbackReplayWriteController] Write server frame at {tick}");
             // Capture server frame (present state, no rollback)
             _rollbackReplayService.CaptureServerFrame(tick);
 

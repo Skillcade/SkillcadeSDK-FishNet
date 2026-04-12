@@ -4,6 +4,7 @@ using FishNet.Component.ColliderRollback;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using FishNet.Utility.Template;
+using SkillcadeSDK.FishNetAdapter.Replays;
 using UnityEngine;
 
 namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
@@ -36,13 +37,40 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
                 return;
 
             var tick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
-            PerformRollbackServerRpc(tick, transform.position);
+            var overridePositions = new Dictionary<int, Vector2>();
+            // foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
+            // {
+            //     if (component == null)
+            //         continue;
+            //     
+            //     if (component.UseOverridePosition)
+            //         overridePositions.Add(component.OwnerId, component.transform.position);
+            // }
+            overridePositions.Add(OwnerId, transform.position);
+
+            // Debug.Log($"[PlayerRollbackSource] Collected {overridePositions.Count} override positions");
+            PerformRollbackServerRpc(tick, overridePositions);
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void PerformRollbackServerRpc(PreciseTick tick, Vector2 playerPosition)
+        private void PerformRollbackServerRpc(PreciseTick tick, Dictionary<int, Vector2> overrideObjectsPositions)
         {
-            PlayerOwnerPosition = playerPosition;
+            // Debug.Log($"[PlayerRollbackSource] Perform rollback for {OwnerId} at tick {tick.Tick}, current: {TimeManager.Tick}");
+            foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
+            {
+                if (overrideObjectsPositions.TryGetValue(component.OwnerId, out Vector2 position))
+                {
+                    component.OverridePosition = position;
+                    // Debug.Log($"[PlayerRollbackSource] Use override position {position} for object {component.OwnerId}, transform: {component.transform.position}");
+                }
+                else
+                {
+                    component.OverridePosition = null;
+                }
+            }
+            
+            if (overrideObjectsPositions.TryGetValue(OwnerId, out var currentPosition))
+                PlayerOwnerPosition = currentPosition;
             
             _queryResults ??= new();
             _queryResults.Clear();
@@ -52,6 +80,11 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
             OnRollback?.Invoke(tick);
             RollbackManager.RevertRollbackPositions();
             PlayerOwnerPosition = null;
+            
+            foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
+            {
+                component.OverridePosition = null;
+            }
         }
     }
 }

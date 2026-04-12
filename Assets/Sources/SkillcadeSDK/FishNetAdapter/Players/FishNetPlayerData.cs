@@ -25,6 +25,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             base.OnStartNetwork();
             this.InjectToMe();
             _fishNetPlayersController.RegisterPlayerData(OwnerId, this);
+            if (OwnerId < 0)
+                Debug.LogError($"[FishNetPlayerData] Spawned with owner id {OwnerId}");
+            
             _data.OnChange += OnDataChanged;
         }
 
@@ -39,14 +42,12 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             if (IsServerInitialized)
             {
-                Debug.Log($"[FishNetPlayerData] [{OwnerId}] Set data for player on server: {key}");
                 _data[key] = data;
                 return;
             }
 
             if (OwnerId == NetworkManager.ClientManager.Connection.ClientId)
             {
-                Debug.Log($"[FishNetPlayerData] [{OwnerId}] Set data for local player from client owner: {key}");
                 SetDataFromLocalServerRpc(key, data);
                 return;
             }
@@ -107,7 +108,6 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         [ServerRpc(RequireOwnership = true)]
         private void SetDataFromLocalServerRpc(string key, IDataContainer data)
         {
-            Debug.Log($"[FishNetPlayerData] [{OwnerId}] Set data from player owner on server: {key}");
             _data[key] = data;
         }
 
@@ -116,7 +116,6 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (value == null || string.IsNullOrEmpty(key) || op == SyncDictionaryOperation.Complete)
                 return;
 
-            Debug.Log($"[FishNetPlayerData] [{OwnerId}] Data changed: {key}");
             OnChanged?.Invoke(this);
             OnValueChanged?.Invoke(this, key);
         }

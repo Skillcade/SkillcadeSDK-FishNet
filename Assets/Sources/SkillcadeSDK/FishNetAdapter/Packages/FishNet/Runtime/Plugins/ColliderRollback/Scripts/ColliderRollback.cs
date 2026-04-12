@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using FishNet.Managing;
 using FishNet.Object;
 using GameKit.Dependencies.Utilities;
@@ -48,6 +49,7 @@ namespace FishNet.Component.ColliderRollback
 
         private Vector3 _rollbackPosition;
         private bool _rollbackPositionSet;
+        public IEnumerable<Vector3> RollingCollidersPositions => _rollingColliders?.Select(x => x.Position);
         #endregion
 
         #region Private.

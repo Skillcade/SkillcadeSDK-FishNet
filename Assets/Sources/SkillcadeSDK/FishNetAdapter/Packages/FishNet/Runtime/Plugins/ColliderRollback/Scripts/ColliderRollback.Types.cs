@@ -59,6 +59,7 @@ namespace FishNet.Component.ColliderRollback
         /// </summary>
         internal class RollingCollider : IResettable
         {
+            public Vector3 Position => _transform.position;
             #region Private.
             /// <summary>
             /// Current snapshots for this collider.
