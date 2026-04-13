@@ -36,10 +36,10 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
             for (int i = 0; i < allTriggers.Count; i++)
             {
                 var trigger = allTriggers[i];
-                if (!trigger.CheckOverlap(playerPos, _checkRadius))
+                if (!trigger.CheckOverlap(transform.position, playerPos, _checkRadius))
                     continue;
 
-                trigger.HandleTriggerServer(_networkObject);
+                trigger.HandleTriggerServer(_networkObject, transform.position, playerPos);
             }
         }
 
