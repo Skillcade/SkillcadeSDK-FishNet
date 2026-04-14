@@ -1,0 +1,20 @@
+{
+    "name": "SkillcadeSDK-FishNet-Bayou",
+    "rootNamespace": "",
+    "references": [
+        "GUID:7c88a4a7926ee5145ad2dfa06f454c67",
+        "GUID:ac553197a0f957a41b3967c536c45cba",
+        "GUID:bd809a54d932a8f4ca029ba33938a03d",
+        "GUID:7bf834368d865d943b0569a8ab0aa1f7",
+        "GUID:b0214a6008ed146ff8f122a6a9c2f6cc"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

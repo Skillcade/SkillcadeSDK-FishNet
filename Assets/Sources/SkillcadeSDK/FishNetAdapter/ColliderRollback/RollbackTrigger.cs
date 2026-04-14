@@ -84,8 +84,6 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         {
             HandleTriggerServer_Internal(playerNetworkObject);
             
-            if (!_debug) return;
-            
             Vector2 center = GetPosition();
             ShowHitPositionClientRpc(playerTransformPosition, point, transform.position, center);
         }
