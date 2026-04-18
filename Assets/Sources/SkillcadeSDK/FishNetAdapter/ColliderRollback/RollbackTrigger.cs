@@ -22,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         public static List<RollbackTrigger> AllTriggers => _allTriggers;
 
         private FishNet.Component.ColliderRollback.ColliderRollback _colliderRollback;
+        private SkillcadeSDK.FishNetAdapter.Replays.FishNetRigidbody2dReplayComponent _replayComponent;
 
         private bool _drawHitPosition;
         private Vector2 _playerTransformPosition;
@@ -33,6 +34,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         {
             base.OnStartServer();
             _colliderRollback = GetComponentInParent<FishNet.Component.ColliderRollback.ColliderRollback>();
+            _replayComponent  = GetComponentInParent<SkillcadeSDK.FishNetAdapter.Replays.FishNetRigidbody2dReplayComponent>();
             _allTriggers.Add(this);
         }
 
@@ -44,6 +46,9 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 
         public Vector2 GetPosition()
         {
+            if (_replayComponent != null && _replayComponent.OverridePosition.HasValue)
+                return _replayComponent.OverridePosition.Value;
+
             return _colliderRollback == null
                 ? (Vector2)transform.position
                 : (Vector2)_colliderRollback.RollbackPosition;

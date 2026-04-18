@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using FishNet.Component.ColliderRollback;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using FishNet.Utility.Template;
@@ -14,13 +13,8 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         public Vector2? PlayerOwnerPosition;
         public event Action<PreciseTick> OnRollback;
 
-        public new RollbackManager RollbackManager => base.RollbackManager;
-
-        public IReadOnlyList<(FishNet.Component.ColliderRollback.ColliderRollback colliderRollback, Vector3 position)> LastQueryResults => _queryResults;
-
         [SerializeField] private int _tickDivisor = 1;
 
-        private List<(FishNet.Component.ColliderRollback.ColliderRollback, Vector3)> _queryResults;
         private int _tickCounter;
 
         private void Awake()
@@ -38,51 +32,55 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 
             var tick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
             var overridePositions = new Dictionary<int, Vector2>();
-            // foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
-            // {
-            //     if (component == null)
-            //         continue;
-            //     
-            //     if (component.UseOverridePosition)
-            //         overridePositions.Add(component.OwnerId, component.transform.position);
-            // }
             overridePositions.Add(OwnerId, transform.position);
 
-            // Debug.Log($"[PlayerRollbackSource] Collected {overridePositions.Count} override positions");
             PerformRollbackServerRpc(tick, overridePositions);
         }
 
         [ServerRpc(RequireOwnership = true)]
         private void PerformRollbackServerRpc(PreciseTick tick, Dictionary<int, Vector2> overrideObjectsPositions)
         {
-            // Debug.Log($"[PlayerRollbackSource] Perform rollback for {OwnerId} at tick {tick.Tick}, current: {TimeManager.Tick}");
+            // 1) Apply client-supplied overrides by OwnerId. Track which components got one.
+            var overriddenFromDict = new HashSet<FishNetRigidbody2dReplayComponent>();
             foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
             {
-                if (overrideObjectsPositions.TryGetValue(component.OwnerId, out Vector2 position))
+                if (component == null) continue;
+
+                if (overrideObjectsPositions.TryGetValue(component.OwnerId, out var pos))
                 {
-                    component.OverridePosition = position;
-                    // Debug.Log($"[PlayerRollbackSource] Use override position {position} for object {component.OwnerId}, transform: {component.transform.position}");
+                    component.OverridePosition = pos;
+                    overriddenFromDict.Add(component);
                 }
                 else
                 {
                     component.OverridePosition = null;
                 }
             }
-            
-            if (overrideObjectsPositions.TryGetValue(OwnerId, out var currentPosition))
-                PlayerOwnerPosition = currentPosition;
-            
-            _queryResults ??= new();
-            _queryResults.Clear();
 
-            RollbackManager.QueryRollbackPositions(tick, IsOwner, _queryResults);
+            if (overrideObjectsPositions.TryGetValue(OwnerId, out var ownerPos))
+                PlayerOwnerPosition = ownerPos;
 
+            // 2) For each TickBasedMoveBehaviour: if it has a replay component on same
+            //    GameObject and that component wasn't overridden from the dict, set its
+            //    OverridePosition to the tick-based reconstruction.
+            foreach (var tmb in TickBasedMoveBehaviour.All)
+            {
+                if (tmb == null) continue;
+                if (!tmb.TryGetComponent<FishNetRigidbody2dReplayComponent>(out var replay)) continue;
+                if (overriddenFromDict.Contains(replay)) continue;
+
+                replay.OverridePosition = tmb.GetPositionAtTick(tick);
+            }
+
+            // 3) Fire rollback validation. RollbackTrigger/Validator read override positions.
+            //    Replay write runs inside this invocation — OverridePosition values must be live.
             OnRollback?.Invoke(tick);
-            RollbackManager.RevertRollbackPositions();
+
+            // 4) Clear state.
             PlayerOwnerPosition = null;
-            
             foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
             {
+                if (component == null) continue;
                 component.OverridePosition = null;
             }
         }
