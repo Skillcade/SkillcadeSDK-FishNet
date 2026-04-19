@@ -42,14 +42,18 @@ namespace Game.RigidbodyInterpolation
         [SerializeField] private Rigidbody2D _rigidbody;
         [SerializeField] private Transform _visualTransform;
 
-        [Header("Timeline")]
+        [Header("Config")]
+        [SerializeField] private bool _workOnNotOwner;
         [SerializeField] private SnapshotInterpolationSettings _interpolationSettings;
 
         private float BufferTime => InterpolationUtils.SendInterval * _bufferTimeMultiplier;
 
         [Inject] private readonly IObjectResolver _objectResolver;
 
-        private State _state;
+        [Header("Debug")]
+        [SerializeField] private State _state;
+        [SerializeField] private int _isActive;
+        [SerializeField] private float _timelineOffset;
 
         // Buffers
         private SortedList<float, TimeSnapshot> _timeBuffer;
@@ -130,8 +134,8 @@ namespace Game.RigidbodyInterpolation
             }
 
             var tick = _state == State.Online ? _networkObject.TimeManager.LocalTick : _fixedUpdateTick;
-            float remoteTime = _state == State.Online ? (float)_networkObject.TimeManager.TicksToTime(tick) : Time.fixedTime;
-            float localTime = _state == State.Online ? _networkObject.TimeManager.ClientUptime : Time.time;
+            var remoteTime = _state == State.Online ? (float)_networkObject.TimeManager.TicksToTime(tick) : Time.fixedTime;
+            var localTime = _state == State.Online ? _networkObject.TimeManager.ClientUptime : Time.time;
 
             var timeSnapshot = new TimeSnapshot(remoteTime, localTime);
             InterpolationUtils.InsertAndAdjust(
@@ -154,15 +158,19 @@ namespace Game.RigidbodyInterpolation
         /// </summary>
         private void Update()
         {
+            _isActive = 0;
             if (_objectResolver == null)
                 this.InjectToMe();
 
             if (_state == State.None && _objectResolver.TryResolve(out FishNetPlayersController _))
                 _state = State.Online;
             
-            if (_state != State.Online || !IsOwner)
+            if (_state != State.Online || (!_workOnNotOwner && !IsOwner))
+            {
+                _isActive = 1;
                 return;
-
+            }
+            
             if (_timeBuffer.Count > 0)
             {
                 _localTimeline += Time.unscaledDeltaTime * _localTimescale;
@@ -171,21 +179,25 @@ namespace Game.RigidbodyInterpolation
 
             if (_positionBuffer.Count == 0)
             {
+                _isActive = 2;
                 ApplyVisualPosition(_rigidbody.position);
                 return;
             }
 
             if (_interpolationSettings.TeleportBufferThreshold > 0 && _positionBuffer.Count >= _interpolationSettings.TeleportBufferThreshold)
             {
+                _isActive = 3;
                 Teleport(_rigidbody.position);
                 return;
             }
 
+            _isActive = 4;
             InterpolationUtils.StepInterpolation(
                 _positionBuffer, _localTimeline,
                 out var from, out var to, out float t);
 
-            Vector2 interpolated = Vector2.Lerp(from.Position, to.Position, t);
+            _timelineOffset = t;
+            var interpolated = Vector2.Lerp(from.Position, to.Position, t);
             ApplyVisualPosition(interpolated);
         }
 
