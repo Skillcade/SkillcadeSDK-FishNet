@@ -47,7 +47,7 @@ namespace SkillcadeSDK.FishNetAdapter.BayouTransport
             var address = config.UseEncryption ? config.WssServerName : config.ServerAddress;
             _bayouTransport.SetUseWSS(config.UseEncryption);
             _bayouTransport.SetPort(port);
-            _bayouTransport.SetClientAddress(config.ServerAddress);
+            _bayouTransport.SetClientAddress(address);
             _networkManager.ClientManager.StartConnection();
         }
 
