@@ -11,9 +11,8 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
     public class PlayerRollbackSource : TickNetworkBehaviour
     {
         public Vector2? PlayerOwnerPosition;
-        public event Action<PreciseTick> OnRollback;
+        public event Action<PreciseTick, PreciseTick> OnRollback;
 
-        [SerializeField] private TickType _tickType;
         [SerializeField] private int _tickDivisor = 1;
 
         private int _tickCounter;
@@ -35,11 +34,12 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
             var overridePositions = new Dictionary<int, Vector2>();
             overridePositions.Add(OwnerId, transform.position);
 
-            PerformRollbackServerRpc(tick, overridePositions);
+            var writeTick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
+            PerformRollbackServerRpc(tick, writeTick, overridePositions);
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void PerformRollbackServerRpc(PreciseTick tick, Dictionary<int, Vector2> overrideObjectsPositions)
+        private void PerformRollbackServerRpc(PreciseTick tick, PreciseTick writeTick, Dictionary<int, Vector2> overrideObjectsPositions)
         {
             // 1) Apply client-supplied overrides by OwnerId. Track which components got one.
             var overriddenFromDict = new HashSet<FishNetRigidbody2dReplayComponent>();
@@ -75,7 +75,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 
             // 3) Fire rollback validation. RollbackTrigger/Validator read override positions.
             //    Replay write runs inside this invocation — OverridePosition values must be live.
-            OnRollback?.Invoke(tick);
+            OnRollback?.Invoke(tick, writeTick);
 
             // 4) Clear state.
             PlayerOwnerPosition = null;

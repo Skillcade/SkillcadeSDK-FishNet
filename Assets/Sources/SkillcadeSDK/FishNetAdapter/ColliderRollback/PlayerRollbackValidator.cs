@@ -25,7 +25,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
             _rollbackSource.OnRollback -= ValidateTriggers;
         }
 
-        private void ValidateTriggers(PreciseTick tick)
+        private void ValidateTriggers(PreciseTick tick, PreciseTick writeTick)
         {
             if (!_rollbackSource.PlayerOwnerPosition.HasValue)
                 Debug.LogError("[PlayerRollbackValidator] no player position for rollback validation!");
