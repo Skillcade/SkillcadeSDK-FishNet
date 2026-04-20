@@ -13,6 +13,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         public Vector2? PlayerOwnerPosition;
         public event Action<PreciseTick> OnRollback;
 
+        [SerializeField] private TickType _tickType;
         [SerializeField] private int _tickDivisor = 1;
 
         private int _tickCounter;
@@ -30,7 +31,7 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
             if (++_tickCounter % _tickDivisor != 0)
                 return;
 
-            var tick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
+            var tick = TimeManager.GetPreciseTick(TickType.Tick);
             var overridePositions = new Dictionary<int, Vector2>();
             overridePositions.Add(OwnerId, transform.position);
 
