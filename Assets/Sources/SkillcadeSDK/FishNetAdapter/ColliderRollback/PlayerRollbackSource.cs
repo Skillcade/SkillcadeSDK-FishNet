@@ -4,16 +4,21 @@ using FishNet.Managing.Timing;
 using FishNet.Object;
 using FishNet.Utility.Template;
 using SkillcadeSDK.FishNetAdapter.Replays;
+using SkillcadeSDK.FishNetAdapter.Serialization;
+using SkillcadeSDK.StateMachine;
 using UnityEngine;
+using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
 {
     public class PlayerRollbackSource : TickNetworkBehaviour
     {
         public Vector2? PlayerOwnerPosition;
-        public event Action<PreciseTick, PreciseTick> OnRollback;
+        public event Action<PreciseTick, int> OnRollback;
 
         [SerializeField] private int _tickDivisor = 1;
+
+        [Inject] private readonly IObjectResolver _objectResolver;
 
         private int _tickCounter;
 
@@ -26,20 +31,37 @@ namespace SkillcadeSDK.FishNetAdapter.ColliderRollback
         {
             if (!IsOwner)
                 return;
-
-            if (++_tickCounter % _tickDivisor != 0)
+            
+            if (_objectResolver == null)
+                this.InjectToMe();
+            
+            if (!_objectResolver.TryResolve(out SkillcadeGameStateMachine stateMachine))
+                return;
+            
+            if (stateMachine.CurrentStateType != GameStateType.Running)
                 return;
 
+            // if (++_tickCounter % _tickDivisor != 0)
+            //     return;
+
             var tick = TimeManager.GetPreciseTick(TickType.Tick);
-            var overridePositions = new Dictionary<int, Vector2>();
+            var overridePositions = new Dictionary<int, Vector2Short>();
             overridePositions.Add(OwnerId, transform.position);
 
-            var writeTick = TimeManager.GetPreciseTick(TickType.LastPacketTick);
-            PerformRollbackServerRpc(tick, writeTick, overridePositions);
+            foreach (var component in FishNetRigidbody2dReplayComponent.ReplayComponents)
+            {
+                if (component == null) continue;
+                
+                if (component.UseOverridePosition)
+                    overridePositions[component.OwnerId] = component.transform.position;
+            }
+
+            var writeTick = TimeManager.Tick;
+            PerformRollbackServerRpc(tick, (int)writeTick, overridePositions);
         }
 
         [ServerRpc(RequireOwnership = true)]
-        private void PerformRollbackServerRpc(PreciseTick tick, PreciseTick writeTick, Dictionary<int, Vector2> overrideObjectsPositions)
+        private void PerformRollbackServerRpc(PreciseTick tick, int writeTick, Dictionary<int, Vector2Short> overrideObjectsPositions)
         {
             // 1) Apply client-supplied overrides by OwnerId. Track which components got one.
             var overriddenFromDict = new HashSet<FishNetRigidbody2dReplayComponent>();

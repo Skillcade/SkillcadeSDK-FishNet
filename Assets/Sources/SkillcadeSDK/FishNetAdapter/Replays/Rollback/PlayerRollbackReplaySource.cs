@@ -1,6 +1,7 @@
 ﻿using FishNet.Managing.Timing;
 using FishNet.Object;
 using SkillcadeSDK.FishNetAdapter.ColliderRollback;
+using SkillcadeSDK.StateMachine;
 using UnityEngine;
 using VContainer;
 
@@ -26,7 +27,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 _rollbackSource.OnRollback -= OnRollback;
         }
 
-        private void OnRollback(PreciseTick tick, PreciseTick writeTick)
+        private void OnRollback(PreciseTick tick, int writeTick)
         {
             if (_objectResolver == null)
                 this.InjectToMe();
@@ -34,7 +35,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             if (!_objectResolver.TryResolve(out RollbackReplayWriteService writeService))
                 return;
 
-            writeService.CaptureClientFrame(OwnerId, (int)writeTick.Tick);
+            writeService.CaptureClientFrame(OwnerId, (int)writeTick);
         }
     }
 }

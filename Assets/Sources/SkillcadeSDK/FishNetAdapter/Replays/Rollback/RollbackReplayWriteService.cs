@@ -24,6 +24,8 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             public byte[] FrameData;
         }
 
+        public bool Active => _active;
+
         [Inject] private readonly ReplayWriteService _replayWriteService;
         [Inject] private readonly GameVersionConfig _gameVersionConfig;
         [Inject] private readonly IConnectionController _connectionController;
@@ -37,7 +39,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         private readonly Dictionary<int, List<(int, FrameInfo)>> _replayDataForClients = new();
         private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
         private readonly List<ReplayEvent> _pendingEvents = new();
-
         private readonly List<ReplayEvent> _eventsFrameBuffer = new();
 
         private bool _active;
@@ -60,7 +61,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void OnWriteStarted()
         {
-            // Debug.Log("[RollbackReplayWriteService] Write started");
+            Debug.Log($"[RollbackReplayWriteService] Write started, pending events: {_pendingEvents.Count}");
             _active = true;
             _startTime = DateTime.UtcNow;
             _replayDataForClients.Clear();
@@ -91,9 +92,15 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         private void OnEventAdded(ReplayEvent evt)
         {
             if (_active)
+            {
                 AddEventAtCurrentTick(evt);
+                Debug.Log($"[RollbackReplayWriteService] Add event {evt.GetType().Name} at tick {_currentTick}");
+            }
             else
+            {
                 _pendingEvents.Add(evt);
+                Debug.Log($"[RollbackReplayWriteService] Add event {evt.GetType().Name} as pending");
+            }
         }
 
         private void AddEventAtCurrentTick(ReplayEvent evt)
@@ -104,7 +111,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 _eventsByTick[_currentTick] = events;
             }
             events.Add(evt);
-            // Debug.Log($"[RollbackReplayWriteService] Add event {evt.GetType().Name} at tick {_currentTick}");
         }
 
         public void SetCurrentTick(int tick)
@@ -118,7 +124,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         {
             if (_active)
             {
-                // Debug.Log($"[RollbackReplayWriteService] Capture server frame at {tick}");
                 CaptureFrame(0, tick);
             }
         }
@@ -126,15 +131,16 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         public void CaptureClientFrame(int clientId, int tick)
         {
             if (_active)
+            {
                 CaptureFrame(clientId, tick);
+            }
         }
 
         private void CaptureFrame(int clientId, int tick)
         {
+            Debug.Log($"[RollbackReplayWriteService] [{tick}] Capture client {clientId} frame");
             using var stream = new MemoryStream();
             using var binaryWriter = new BinaryWriter(stream);
-
-            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Capture client {clientId} frame");
             
             var writer = new ReplayWriter(binaryWriter);
             writer.WriteInt(tick);
@@ -145,14 +151,14 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 bool writePendingEvents = !_replayDataForClients.TryGetValue(clientId, out var frames) || frames.Count == 0;
                 if (writePendingEvents)
                 {
-                    // Debug.Log($"[RollbackReplayWriteService] [{tick}] got {_pendingEvents.Count} pending events for first frame client {clientId}");
+                    Debug.Log($"[RollbackReplayWriteService] [{tick}] got {_pendingEvents.Count} pending events for first frame client {clientId}");
                     _eventsFrameBuffer.AddRange(_pendingEvents);
                 }
             }
 
             if (_eventsByTick.TryGetValue(tick, out var events))
             {
-                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Got {events.Count} events for client {clientId}");
+                Debug.Log($"[RollbackReplayWriteService] [{tick}] Got {events.Count} events for client {clientId}");
                 _eventsFrameBuffer.AddRange(events);
             }
 

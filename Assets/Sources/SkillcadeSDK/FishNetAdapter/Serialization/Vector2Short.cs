@@ -15,15 +15,29 @@ namespace SkillcadeSDK.FishNetAdapter.Serialization
         public short X;
         public short Y;
 
-        public static Vector2Short FromVector2(Vector2 v) => new()
+        public Vector2 ToVector2() => new(
+            Mathf.HalfToFloat((ushort)X),
+            Mathf.HalfToFloat((ushort)Y)
+        );
+
+        public static implicit operator Vector2Short(Vector2 v) => new()
         {
             X = (short)Mathf.FloatToHalf(v.x),
             Y = (short)Mathf.FloatToHalf(v.y)
         };
 
-        public Vector2 ToVector2() => new(
-            Mathf.HalfToFloat((ushort)X),
-            Mathf.HalfToFloat((ushort)Y)
-        );
+        public static implicit operator Vector2(Vector2Short v) => new(
+            Mathf.HalfToFloat((ushort)v.X),
+            Mathf.HalfToFloat((ushort)v.Y));
+
+        public static implicit operator Vector2Short(Vector3 v) => new()
+        {
+            X = (short)Mathf.FloatToHalf(v.x),
+            Y = (short)Mathf.FloatToHalf(v.y)
+        };
+
+        public static implicit operator Vector3(Vector2Short v) => new(
+            Mathf.HalfToFloat((ushort)v.X),
+            Mathf.HalfToFloat((ushort)v.Y));
     }
 }
