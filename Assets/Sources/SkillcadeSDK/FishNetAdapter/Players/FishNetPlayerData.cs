@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using SkillcadeSDK.Common.Players;
@@ -13,28 +14,51 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         public event Action<FishNetPlayerData> OnChanged;
         public event Action<FishNetPlayerData, string> OnValueChanged;
 
-        public int PlayerNetworkId => OwnerId;
+        public int PlayerNetworkId => _localOwnerId >= 0 ? _localOwnerId : OwnerId;
 
         private readonly SyncDictionary<string, IDataContainer> _data = new(new SyncTypeSettings(WritePermission.ServerOnly));
         private readonly List<MonoBehaviour> _playerObjects = new();
 
         [Inject] private readonly FishNetPlayersController _fishNetPlayersController;
+        private int _prevOwnerId;
+        private int _localOwnerId = -1;
 
         public override void OnStartNetwork()
         {
             base.OnStartNetwork();
             this.InjectToMe();
-            _fishNetPlayersController.RegisterPlayerData(OwnerId, this);
+            _prevOwnerId = OwnerId;
             if (OwnerId < 0)
-                Debug.LogError($"[FishNetPlayerData] Spawned with owner id {OwnerId}");
-            
+            {
+                Debug.LogWarning($"[FishNetPlayerData] Spawned with owner id {OwnerId}, waiting for InitializeWithOwnerId");
+            }
+            else
+            {
+                _localOwnerId = OwnerId;
+                _fishNetPlayersController.RegisterPlayerData(OwnerId, this);
+            }
+
             _data.OnChange += OnDataChanged;
+        }
+
+        [ObserversRpc(BufferLast = true)]
+        public void InitializeWithOwnerId(int ownerId)
+        {
+            _localOwnerId = ownerId;
+            _fishNetPlayersController.RegisterPlayerData(ownerId, this);
+        }
+
+        public override void OnOwnershipClient(NetworkConnection prevOwner)
+        {
+            base.OnOwnershipClient(prevOwner);
+            Debug.LogError($"[FishNetPlayerData] Changed owner from {_prevOwnerId} to {OwnerId}");
         }
 
         public override void OnStopNetwork()
         {
             base.OnStopNetwork();
-            _fishNetPlayersController.UnregisterPlayerData(OwnerId);
+            var id = _localOwnerId >= 0 ? _localOwnerId : OwnerId;
+            _fishNetPlayersController.UnregisterPlayerData(id);
             _data.OnChange -= OnDataChanged;
         }
 

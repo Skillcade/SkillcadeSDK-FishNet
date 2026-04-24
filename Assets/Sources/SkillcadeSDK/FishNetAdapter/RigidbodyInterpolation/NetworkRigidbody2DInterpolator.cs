@@ -35,7 +35,8 @@ namespace Game.RigidbodyInterpolation
         }
 
         public Rigidbody2D Rigidbody => _rigidbody;
-        public bool Ignore { get; set; }
+        public bool Ignore;
+        public bool IgnoreY;
 
         [Header("References")]
         [SerializeField] private NetworkObject _networkObject;
@@ -244,10 +245,20 @@ namespace Game.RigidbodyInterpolation
                 return;
             }
             
+            float oldLocalY = _visualTransform.localPosition.y;
+            
             _visualTransform.position = new Vector3(
                 worldPosition.x,
                 worldPosition.y,
                 _rigidbody.transform.position.z);
+
+            if (IgnoreY)
+            {
+                _visualTransform.localPosition = new Vector3(
+                    _visualTransform.localPosition.x,
+                    oldLocalY,
+                    _visualTransform.localPosition.z);
+            }
         }
     }
 }

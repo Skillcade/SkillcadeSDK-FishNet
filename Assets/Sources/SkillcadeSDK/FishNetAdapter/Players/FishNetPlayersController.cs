@@ -55,6 +55,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
+            instance.InitializeWithOwnerId(connection.ClientId);
         }
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
