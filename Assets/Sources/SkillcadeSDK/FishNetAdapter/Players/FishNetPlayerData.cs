@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using SkillcadeSDK.Common.Players;
@@ -20,23 +19,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         private readonly List<MonoBehaviour> _playerObjects = new();
 
         [Inject] private readonly FishNetPlayersController _fishNetPlayersController;
-        private int _prevOwnerId;
+        
         private int _localOwnerId = -1;
 
         public override void OnStartNetwork()
         {
             base.OnStartNetwork();
             this.InjectToMe();
-            _prevOwnerId = OwnerId;
-            if (OwnerId < 0)
-            {
-                Debug.LogWarning($"[FishNetPlayerData] Spawned with owner id {OwnerId}, waiting for InitializeWithOwnerId");
-            }
-            else
-            {
-                _localOwnerId = OwnerId;
+            if (OwnerId > 0)
                 _fishNetPlayersController.RegisterPlayerData(OwnerId, this);
-            }
 
             _data.OnChange += OnDataChanged;
         }
@@ -46,12 +37,6 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             _localOwnerId = ownerId;
             _fishNetPlayersController.RegisterPlayerData(ownerId, this);
-        }
-
-        public override void OnOwnershipClient(NetworkConnection prevOwner)
-        {
-            base.OnOwnershipClient(prevOwner);
-            Debug.LogError($"[FishNetPlayerData] Changed owner from {_prevOwnerId} to {OwnerId}");
         }
 
         public override void OnStopNetwork()
