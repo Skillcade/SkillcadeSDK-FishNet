@@ -2,9 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FishNet.Managing;
+using FishNet.Object;
 using Newtonsoft.Json;
 using SkillcadeSDK.Connection;
+using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.Replays;
+using SkillcadeSDK.Replays.Components;
 using SkillcadeSDK.Replays.Events;
 using UnityEngine;
 using VContainer;
@@ -30,6 +34,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         [Inject] private readonly GameVersionConfig _gameVersionConfig;
         [Inject] private readonly IConnectionController _connectionController;
         [Inject] private readonly FishNetReplayPlayerDataService _fishNetReplayPlayerDataService;
+        [Inject] private readonly FishNetPlayersController _fishNetPlayersController;
 
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
@@ -40,6 +45,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
         private readonly List<ReplayEvent> _pendingEvents = new();
         private readonly List<ReplayEvent> _eventsFrameBuffer = new();
+        private readonly List<ReplayObjectHandler> _filteredObjectsBuffer = new();
 
         private bool _active;
         private DateTime _startTime;
@@ -177,8 +183,9 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
 
             var activeObjects = _replayWriteService.ActiveObjects;
-            writer.WriteInt(activeObjects.Count);
-            foreach (var handler in activeObjects)
+            var objectsToWrite = GetObjectsForFrame(clientId, activeObjects);
+            writer.WriteInt(objectsToWrite.Count);
+            foreach (var handler in objectsToWrite)
             {
                 // Debug.Log($"[RollbackReplayWriteService] [{tick}] Write object {handler.ObjectId} with prefab {handler.PrefabId} to replay");
                 writer.WriteInt(handler.PrefabId);
@@ -200,6 +207,30 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 FrameData = frameData
             };
             clientFrames.Add((tick, currentFrame));
+        }
+
+        private IReadOnlyList<ReplayObjectHandler> GetObjectsForFrame(int clientId, IReadOnlyList<ReplayObjectHandler> activeObjects)
+        {
+            Debug.Log($"[RollbackReplayWriteService] Get objects for frame {clientId}");
+            if (clientId == 0)
+                return activeObjects;
+
+            Debug.Log($"[RollbackReplayWriteService] Has {_fishNetPlayersController.GetAllPlayersData().Count()} players");
+
+            _filteredObjectsBuffer.Clear();
+            foreach (var handler in activeObjects)
+            {
+                if (handler.TryGetComponent(out NetworkObject networkObject) && networkObject.OwnerId != clientId && networkObject.OwnerId != 0)
+                {
+                    Debug.Log($"[RollbackReplayWriteService] Skip other player object {handler.ObjectId}, owner {networkObject.OwnerId}");
+                    continue;
+                }
+                
+                _filteredObjectsBuffer.Add(handler);
+            }
+
+            Debug.Log($"[RollbackReplayWriteService] Filtered {_filteredObjectsBuffer.Count} objects");
+            return _filteredObjectsBuffer;
         }
 
         private void WriteFile()

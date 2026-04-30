@@ -17,6 +17,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
             public float DefaultAlpha;
         }
 
+        [SerializeField] private bool _hideIfDifferentClientWorld;
         [SerializeField] private SpriteRenderer[] _targetRenderers;
         [SerializeField] private CanvasGroup[] _targetGroups;
 

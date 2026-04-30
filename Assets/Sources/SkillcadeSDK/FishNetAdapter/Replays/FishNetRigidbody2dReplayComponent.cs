@@ -9,29 +9,23 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
     [ReplayDataObjectId(1)]
     public class FishNetRigidbody2dReplayComponent : MonoBehaviour, IReplayComponent
     {
-        public static List<FishNetRigidbody2dReplayComponent> ReplayComponents = new List<FishNetRigidbody2dReplayComponent>();
-        
         public int OwnerId => _playerRollbackSource != null ? _playerRollbackSource.OwnerId : -1;
         public int Size => sizeof(float) * 2;
-        public bool UseOverridePosition => _useOverridePosition;
 
         public Vector2? OverridePosition;
 
+        private Vector2? RollbackSourcePosition =>
+            _playerRollbackSource != null && _playerRollbackSource.PlayerOwnerPosition.HasValue
+                ? _playerRollbackSource.PlayerOwnerPosition
+                : null;
+
+        private Vector2? ColliderRollbackPosition =>
+            _colliderRollback != null ? _colliderRollback.RollbackPosition : null;
+
         [SerializeField] private bool _debug;
-        [SerializeField] private bool _useOverridePosition;
         [SerializeField] private Rigidbody2D _rigidbody;
         [SerializeField] private PlayerRollbackSource _playerRollbackSource;
         [SerializeField] private FishNet.Component.ColliderRollback.ColliderRollback _colliderRollback;
-
-        private void OnEnable()
-        {
-            ReplayComponents.Add(this);
-        }
-
-        private void OnDisable()
-        {
-            ReplayComponents.Remove(this);
-        }
 
         public void Read(ReplayReader reader)
         {
@@ -41,10 +35,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 
         public void Write(ReplayWriter writer)
         {
-            var position = OverridePosition ?? (
-                _colliderRollback != null
-                    ? _colliderRollback.RollbackPosition
-                    : _rigidbody.position);
+            var position = OverridePosition ?? RollbackSourcePosition ?? ColliderRollbackPosition ?? _rigidbody.position;
 
             if (_debug)
             {
@@ -60,6 +51,11 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
                         Debug.Log(
                             $"[FishNetRigidbody2dReplayComponent] Object {OwnerId} overrided position without rollback, write: {position}, actual: {_rigidbody.position}");
                     }
+                }
+                else if (RollbackSourcePosition.HasValue)
+                {
+                    Debug.Log(
+                        $"[FishNetRigidbody2dReplayComponent] Object {OwnerId} source position at rollback, write: {position}, rollback: {_colliderRollback.RollbackPosition}, actual: {_rigidbody.position}");
                 }
                 else
                 {
