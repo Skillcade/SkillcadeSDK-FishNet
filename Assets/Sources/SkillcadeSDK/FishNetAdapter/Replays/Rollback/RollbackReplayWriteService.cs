@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FishNet.Managing;
 using FishNet.Object;
 using Newtonsoft.Json;
 using SkillcadeSDK.Connection;
@@ -211,25 +210,18 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private IReadOnlyList<ReplayObjectHandler> GetObjectsForFrame(int clientId, IReadOnlyList<ReplayObjectHandler> activeObjects)
         {
-            Debug.Log($"[RollbackReplayWriteService] Get objects for frame {clientId}");
             if (clientId == 0)
                 return activeObjects;
-
-            Debug.Log($"[RollbackReplayWriteService] Has {_fishNetPlayersController.GetAllPlayersData().Count()} players");
-
+            
             _filteredObjectsBuffer.Clear();
             foreach (var handler in activeObjects)
             {
-                if (handler.TryGetComponent(out NetworkObject networkObject) && networkObject.OwnerId != clientId && networkObject.OwnerId != 0)
-                {
-                    Debug.Log($"[RollbackReplayWriteService] Skip other player object {handler.ObjectId}, owner {networkObject.OwnerId}");
+                if (handler.TryGetComponent(out NetworkObject networkObject) && networkObject.OwnerId != clientId && networkObject.OwnerId > 0)
                     continue;
-                }
                 
                 _filteredObjectsBuffer.Add(handler);
             }
 
-            Debug.Log($"[RollbackReplayWriteService] Filtered {_filteredObjectsBuffer.Count} objects");
             return _filteredObjectsBuffer;
         }
 
