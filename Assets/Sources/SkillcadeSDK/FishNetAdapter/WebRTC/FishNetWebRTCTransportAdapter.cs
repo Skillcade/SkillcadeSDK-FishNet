@@ -56,6 +56,8 @@ namespace SkillcadeSDK.FishNetAdapter
             {
                 _webRtcTransport = _networkManager.TransportManager.Transport as FishyWebRTCTransport;
             }
+
+            Debug.Log($"[FishNetWebRTCTransportAdapter] Initialize complete. Multipass={_multipassTransport != null}, WebRTC found={_webRtcTransport != null}");
         }
 
         public void Dispose()
