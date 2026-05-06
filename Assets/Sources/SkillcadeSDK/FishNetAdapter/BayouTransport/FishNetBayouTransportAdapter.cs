@@ -35,6 +35,7 @@ namespace SkillcadeSDK.FishNetAdapter.BayouTransport
 
         public void StartServer(ConnectionData config)
         {
+            Debug.Log($"[FishNetBayouTransportAdapter] listen at port {config.ServerListenPort}");
             _bayouTransport.SetServerBindAddress("127.0.0.1", IPAddressType.IPv4);
             _bayouTransport.SetPort(config.ServerListenPort);
             _bayouTransport.SetUseWSS(false);
@@ -45,6 +46,8 @@ namespace SkillcadeSDK.FishNetAdapter.BayouTransport
         {
             var port = config.UseEncryption ? config.WssConnectPort : config.ServerListenPort;
             var address = config.UseEncryption ? config.WssServerName : config.ServerAddress;
+            Debug.Log($"[FishNetBayouTransportAdapter] connect at {address}:{port}, secure: {config.UseEncryption}");
+
             _bayouTransport.SetUseWSS(config.UseEncryption);
             _bayouTransport.SetPort(port);
             _bayouTransport.SetClientAddress(address);
