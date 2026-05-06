@@ -23,7 +23,7 @@ namespace SkillcadeSDK.FishNetAdapter.Match
         [Inject] private readonly WebRequester _webRequester;
 #endif
 
-        public async Task SendWinnerToBackend(int winnerClientId)
+        public async Task SendWinnerToBackend(int winnerClientId, string winnerPlayerId)
         {
 #if UNITY_SERVER || UNITY_EDITOR
             if (!_connectionConfig.SkillcadeHubIntegrated)
@@ -32,24 +32,29 @@ namespace SkillcadeSDK.FishNetAdapter.Match
                 return;
             }
 
-            if (winnerClientId == 0 || !_playersController.TryGetPlayerData(winnerClientId, out var playerData))
-            {
-                Debug.Log($"[MatchService] Invalid winner ID: {winnerClientId}");
-                return;
-            }
-
-            Debug.Log($"[MatchService] Winner is {winnerClientId}");
             try
             {
-                if (PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
+                if (!string.IsNullOrEmpty(winnerPlayerId))
                 {
-                    Debug.Log($"[MatchService] Sending winner {winnerClientId} with PlayerId {matchData.PlayerId}");
-                    await _webRequester.SendWinner(matchData.PlayerId);
+                    Debug.Log($"[MatchService] Sending winner {winnerClientId} with stable PlayerId {winnerPlayerId}");
+                    await _webRequester.SendWinner(winnerPlayerId);
+                    return;
                 }
-                else
+
+                if (winnerClientId == 0 || !_playersController.TryGetPlayerData(winnerClientId, out var playerData))
+                {
+                    Debug.Log($"[MatchService] Invalid winner ID: {winnerClientId}");
+                    return;
+                }
+
+                if (!PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
                 {
                     Debug.LogError("[MatchService] Can't get winner player match data");
+                    return;
                 }
+
+                Debug.Log($"[MatchService] Sending winner {winnerClientId} with PlayerId {matchData.PlayerId}");
+                await _webRequester.SendWinner(matchData.PlayerId);
             }
             catch (Exception e)
             {

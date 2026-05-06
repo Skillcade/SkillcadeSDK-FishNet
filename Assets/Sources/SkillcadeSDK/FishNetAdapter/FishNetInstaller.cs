@@ -1,4 +1,5 @@
 ﻿using FishNet.Managing;
+using SkillcadeSDK.FishNetAdapter.Authenticator;
 using SkillcadeSDK.DI;
 using SkillcadeSDK.FishNetAdapter.PingService;
 using SkillcadeSDK.FishNetAdapter.Players;
@@ -27,6 +28,7 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_stateMachineSyncer).AsSelf().AsImplementedInterfaces();
             builder.RegisterInstance(_replayWriteController);
             builder.RegisterInstance(_rollbackReplayController);
+            builder.Register<AuthenticatedPlayerDataStore>(Lifetime.Singleton);
             builder.Register<RollbackReplayWriteService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
 
             builder.Register<FishNetPingService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();

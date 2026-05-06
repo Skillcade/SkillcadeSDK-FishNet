@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Transporting;
 using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Connection;
+using SkillcadeSDK.FishNetAdapter.Authenticator;
 using UnityEngine;
 using VContainer;
 
@@ -25,8 +24,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         [SerializeField] private FishNetPlayerData _playerDataPrefab;
 
-        [Inject] private readonly WebBridge _webBridge;
         [Inject] private readonly ConnectionConfig _connectionConfig;
+        [Inject] private readonly AuthenticatedPlayerDataStore _authenticatedPlayerDataStore;
         
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
@@ -56,6 +55,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
             instance.InitializeWithOwnerId(connection.ClientId);
+            ApplyAuthenticatedData(connection.ClientId, instance);
         }
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
@@ -69,11 +69,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (!IsClientInitialized || playerId != LocalPlayerId)
                 return;
 
-            if (_connectionConfig.SkillcadeHubIntegrated)
-            {
-                WaitForPayloadAndSetMatchData(destroyCancellationToken).DoNotAwait();
-            }
-            else
+            if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 var data = new PlayerMatchData
                 {
@@ -90,6 +86,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             {
                 data.OnChanged -= OnPlayerDataChanged;
                 OnPlayerRemoved?.Invoke(playerId, data);
+                
+                if (IsServerInitialized)
+                    _authenticatedPlayerDataStore.RemoveClient(playerId);
             }
         }
 
@@ -151,23 +150,26 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 #endif
         }
 
-        private async Task WaitForPayloadAndSetMatchData(CancellationToken cancellationToken)
+        private void ApplyAuthenticatedData(int clientId, FishNetPlayerData playerData)
         {
-            while (_webBridge.Payload == null)
-            {
-                await Task.Yield();
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            if (!TryGetLocalPlayerData(out var playerData))
+            if (!_authenticatedPlayerDataStore.TryGetByClientId(clientId, out var authData))
                 return;
 
-            var data = new PlayerMatchData
+            var matchData = new PlayerMatchData
             {
-                Nickname = _webBridge.Payload.Nickname,
-                PlayerId = _webBridge.Payload.PlayerId
+                Nickname = authData.Nickname,
+                PlayerId = authData.PlayerId
             };
-            data.SetToPlayer(playerData);
+            matchData.SetToPlayer(playerData);
+
+            if (string.IsNullOrEmpty(authData.CharacterName))
+                return;
+
+            var characterData = new PlayerCharacterData
+            {
+                CharacterName = authData.CharacterName
+            };
+            characterData.SetToPlayer(playerData);
         }
     }
 }

@@ -41,12 +41,12 @@ namespace SkillcadeSDK.FishNetAdapter.States
 
             _timer = _config.WaitAfterFinishSeconds;
 
-            // Publish event with winner id
-            _eventBus.Publish(new GameFinishedEvent(data.WinnerClientId, data.FinishReason));
+            // Publish both FishNet and stable hub identity; FishNet ids can change after reconnect.
+            _eventBus.Publish(new GameFinishedEvent(data.WinnerClientId, data.WinnerPlayerId, data.FinishReason));
             
             if (IsServer)
             {
-                WaitForReplaySendAndSendWinner(data.WinnerClientId).DoNotAwait();
+                WaitForReplaySendAndSendWinner(data.WinnerClientId, data.WinnerPlayerId).DoNotAwait();
                 _playerSpawner.EnsurePlayersDespawned();
             }
         }
@@ -65,7 +65,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
         }
 
-        private async Task WaitForReplaySendAndSendWinner(int winnerId)
+        private async Task WaitForReplaySendAndSendWinner(int winnerId, string winnerPlayerId)
         {
             Debug.Log("[FinishedState] Sending replays and winner");
 #if UNITY_SERVER || UNITY_EDITOR
@@ -75,7 +75,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
 #endif
             await Task.Delay(5000);
             Debug.Log("[FinishedState] Send winner");
-            await _matchService.SendWinnerToBackend(winnerId);
+            await _matchService.SendWinnerToBackend(winnerId, winnerPlayerId);
         }
     }
 }

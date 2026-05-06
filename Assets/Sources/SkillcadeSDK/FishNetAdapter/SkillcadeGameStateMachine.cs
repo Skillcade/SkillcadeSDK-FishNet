@@ -35,22 +35,29 @@ namespace SkillcadeSDK.FishNetAdapter
         {
             if (!IsServer)
                 return;
+            
+            if (CurrentStateType == GameStateType.Finished)
+                return;
 
             int inGamePlayers = 0;
             int winnerId = -1;
+            string winnerPlayerId = null;
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
                 if (PlayerInGameData.TryGetFromPlayer(playerData, out var inGameData) && inGameData.InGame)
                 {
                     winnerId = playerData.PlayerNetworkId;
+                    if (PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
+                        winnerPlayerId = matchData.PlayerId;
+                    
                     inGamePlayers++;
                 }
             }
 
             if (inGamePlayers == 0)
                 SetStateServer(GameStateType.WaitForPlayers);
-            else if (inGamePlayers == 1 && CurrentStateType != GameStateType.Finished)
-                SetStateServer(GameStateType.Finished, new FinishedStateData(winnerId, FinishReason.TechnicalWin));
+            else if (inGamePlayers == 1)
+                SetStateServer(GameStateType.Finished, new FinishedStateData(winnerId, winnerPlayerId, FinishReason.TechnicalWin));
         }
     }
 }

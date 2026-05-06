@@ -19,6 +19,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         [Inject] private readonly ConnectionConfig _connectionConfig;
         [Inject] private readonly WebBridge _webBridge;
+        [Inject] private readonly AuthenticatedPlayerDataStore _authenticatedPlayerDataStore;
         
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly SessionValidator _sessionValidator;
@@ -56,6 +57,8 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             var message = new TokenBroadcast
             {
                 Token = token,
+                PlayerId = _webBridge.Payload?.PlayerId,
+                Nickname = _webBridge.Payload?.Nickname,
             };
             NetworkManager.ClientManager.Broadcast(message);
         }
@@ -70,6 +73,21 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
+                string playerId = connection.ClientId.ToString();
+                if (!_authenticatedPlayerDataStore.CanAcceptPlayer(playerId, _connectionConfig.TargetPlayerCount))
+                {
+                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting client {connection.ClientId}: target player count reached");
+                    SetAuthenticationResult(connection, false);
+                    return;
+                }
+
+                _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
+                {
+                    ClientId = connection.ClientId,
+                    PlayerId = playerId,
+                    Nickname = $"Player_{connection.ClientId}"
+                });
+                
                 SetAuthenticationResult(connection, true);
                 return;
             }
@@ -77,7 +95,24 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             try
             {
                 var payload = _sessionValidator.ValidateToken(message.Token);
+                if (!string.Equals(payload.PlayerId, message.PlayerId, StringComparison.Ordinal))
+                    throw new InvalidOperationException("Auth player id does not match signed join token.");
+
+                if (!_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
+                {
+                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting player {payload.PlayerId}: target player count reached");
+                    SetAuthenticationResult(connection, false);
+                    return;
+                }
+
                 _clientTokens[connection.ClientId] = payload;
+                _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
+                {
+                    ClientId = connection.ClientId,
+                    PlayerId = payload.PlayerId,
+                    Nickname = message.Nickname,
+                    CharacterName = GetCharacterName(payload.PlayerId)
+                });
                 SetAuthenticationResult(connection, true);
             }
             catch (Exception e)
@@ -89,6 +124,23 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             SetAuthenticationResult(connection, true);
 #endif
         }
+
+#if UNITY_SERVER || UNITY_EDITOR
+        private string GetCharacterName(string playerId)
+        {
+            var characterByPlayerIds = _serverPayloadController.Payload?.CharacterByPlayerIds;
+            if (characterByPlayerIds == null)
+                return null;
+
+            foreach (var characterContainer in characterByPlayerIds)
+            {
+                if (characterContainer.PlayerId == playerId)
+                    return characterContainer.CharacterName;
+            }
+
+            return null;
+        }
+#endif
 
         private void SetAuthenticationResult(NetworkConnection connection, bool result)
         {
