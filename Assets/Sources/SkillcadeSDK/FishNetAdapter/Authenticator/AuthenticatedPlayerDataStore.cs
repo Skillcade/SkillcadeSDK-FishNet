@@ -23,7 +23,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             if (string.IsNullOrEmpty(playerId))
                 return _knownPlayerIds.Count < targetPlayerCount;
 
-            return _knownPlayerIds.Contains(playerId) || _knownPlayerIds.Count < targetPlayerCount;
+            return !_knownPlayerIds.Contains(playerId) && _knownPlayerIds.Count < targetPlayerCount;
         }
 
         public void Store(AuthenticatedPlayerData data)
@@ -41,10 +41,8 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         public void RemoveClient(int clientId)
         {
-            if (!_dataByClientId.TryGetValue(clientId, out var removed))
+            if (!_dataByClientId.Remove(clientId, out var removed))
                 return;
-
-            _dataByClientId.Remove(clientId);
 
             if (string.IsNullOrEmpty(removed.PlayerId))
                 return;
