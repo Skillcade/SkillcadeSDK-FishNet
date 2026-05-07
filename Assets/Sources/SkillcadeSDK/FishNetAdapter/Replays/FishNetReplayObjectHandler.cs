@@ -20,9 +20,10 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
             base.Awake();
             _isRegistered = false;
         }
-
+        
         private void OnDestroy()
         {
+            Debug.Log("[FishNetReplayObjectHandler] object handler on destroy");
             if (_isRegistered)
             {
                 _isRegistered = false;

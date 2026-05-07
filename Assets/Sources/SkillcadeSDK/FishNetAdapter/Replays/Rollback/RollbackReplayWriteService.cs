@@ -43,6 +43,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         private readonly Dictionary<int, List<(int, FrameInfo)>> _replayDataForClients = new();
         private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
         private readonly Dictionary<int, int> _lastEventTickFlushedByClient = new();
+        private readonly List<int> _clientIdsBuffer = new();
         private readonly List<ReplayEvent> _pendingEvents = new();
         private readonly List<ReplayEvent> _eventsFrameBuffer = new();
         private readonly List<ReplayObjectHandler> _filteredObjectsBuffer = new();
@@ -120,6 +121,18 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 _eventsByTick[_currentTick] = events;
             }
             events.Add(evt);
+            
+            _clientIdsBuffer.Clear();
+            _clientIdsBuffer.AddRange(_lastEventTickFlushedByClient.Keys);
+            foreach (var clientId in _clientIdsBuffer)
+            {
+                var lastFlushedTick = _lastEventTickFlushedByClient.GetValueOrDefault(clientId, int.MinValue);
+                if (lastFlushedTick >= _currentTick)
+                {
+                    _lastEventTickFlushedByClient[clientId] = _currentTick - 1;
+                    // Debug.Log($"[RollbackReplayWriteService] Drop last flushed tick for client {clientId} to {_currentTick - 1}");
+                }
+            }
         }
 
         public void SetCurrentTick(int tick)
