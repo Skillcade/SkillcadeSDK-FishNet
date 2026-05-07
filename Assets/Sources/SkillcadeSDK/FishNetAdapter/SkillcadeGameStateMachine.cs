@@ -54,7 +54,7 @@ namespace SkillcadeSDK.FishNetAdapter
                 }
             }
 
-            if (inGamePlayers == 0)
+            if (inGamePlayers == 0 && CurrentStateType != GameStateType.WaitForPlayers)
                 SetStateServer(GameStateType.WaitForPlayers);
             else if (inGamePlayers == 1)
                 SetStateServer(GameStateType.Finished, new FinishedStateData(winnerId, winnerPlayerId, FinishReason.TechnicalWin));

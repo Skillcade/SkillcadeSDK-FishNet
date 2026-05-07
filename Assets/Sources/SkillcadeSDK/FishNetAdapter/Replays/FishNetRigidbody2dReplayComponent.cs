@@ -39,6 +39,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 
             if (_debug)
             {
+#if UNITY_EDITOR
                 if (OverridePosition.HasValue)
                 {
                     if (_colliderRollback != null)
@@ -69,6 +70,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
                             $"[FishNetRigidbody2dReplayComponent] Object {OwnerId} position without rollback, write: {position}");
                     }
                 }
+#endif
             }
             
             writer.WriteVector2(position);

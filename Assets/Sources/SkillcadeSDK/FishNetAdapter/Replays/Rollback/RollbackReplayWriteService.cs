@@ -42,6 +42,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private readonly Dictionary<int, List<(int, FrameInfo)>> _replayDataForClients = new();
         private readonly Dictionary<int, List<ReplayEvent>> _eventsByTick = new();
+        private readonly Dictionary<int, int> _lastEventTickFlushedByClient = new();
         private readonly List<ReplayEvent> _pendingEvents = new();
         private readonly List<ReplayEvent> _eventsFrameBuffer = new();
         private readonly List<ReplayObjectHandler> _filteredObjectsBuffer = new();
@@ -71,6 +72,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _startTime = DateTime.UtcNow;
             _replayDataForClients.Clear();
             _eventsByTick.Clear();
+            _lastEventTickFlushedByClient.Clear();
         }
 
         private void OnWriteFinished(bool asServer)
@@ -91,6 +93,8 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             _active = false;
             _replayDataForClients.Clear();
             _eventsByTick.Clear();
+            _lastEventTickFlushedByClient.Clear();
+            _pendingEvents.Clear();
             _fishNetReplayPlayerDataService.ClearPlayers();
         }
 
@@ -143,7 +147,13 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         private void CaptureFrame(int clientId, int tick)
         {
-            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Capture client {clientId} frame");
+            if (!_replayDataForClients.TryGetValue(clientId, out var clientFrames))
+            {
+                clientFrames = new List<(int, FrameInfo)>();
+                _replayDataForClients[clientId] = clientFrames;
+            }
+            
+            // Debug.Log($"[RollbackReplayWriteService] [{tick}] Capture client {clientId} frame {clientFrames.Count}");
             using var stream = new MemoryStream();
             using var binaryWriter = new BinaryWriter(stream);
             
@@ -161,11 +171,17 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 }
             }
 
-            if (_eventsByTick.TryGetValue(tick, out var events))
+            if (!_lastEventTickFlushedByClient.TryGetValue(clientId, out var lastFlushedTick))
+                lastFlushedTick = int.MinValue;
+
+            foreach (var eventTick in _eventsByTick.Keys.Where(k => lastFlushedTick < k && k <= tick).OrderBy(k => k))
             {
-                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Got {events.Count} events for client {clientId}");
-                _eventsFrameBuffer.AddRange(events);
+                var bucket = _eventsByTick[eventTick];
+                // Debug.Log($"[RollbackReplayWriteService] [{tick}] Flush {bucket.Count} events from tick {eventTick} for client {clientId}");
+                _eventsFrameBuffer.AddRange(bucket);
             }
+
+            _lastEventTickFlushedByClient[clientId] = tick;
 
             if (_eventsFrameBuffer.Count > 0)
             {
@@ -193,12 +209,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
 
             var frameData = stream.ToArray();
-
-            if (!_replayDataForClients.TryGetValue(clientId, out var clientFrames))
-            {
-                clientFrames = new List<(int, FrameInfo)>();
-                _replayDataForClients[clientId] = clientFrames;
-            }
 
             var currentFrame = new FrameInfo
             {
