@@ -37,14 +37,34 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             base.OnStartNetwork();
             if (IsServerInitialized)
+            {
                 NetworkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
+                NetworkManager.ServerManager.OnAuthenticationResult += OnServerAuthenticationResult;
+            }
         }
 
         public override void OnStopNetwork()
         {
             base.OnStopNetwork();
             if (IsServerInitialized)
+            {
                 NetworkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
+                NetworkManager.ServerManager.OnAuthenticationResult -= OnServerAuthenticationResult;
+            }
+        }
+
+        private void OnServerAuthenticationResult(NetworkConnection connection, bool authenticated)
+        {
+            if (!authenticated)
+                return;
+
+            if (!TryGetPlayerData(connection.ClientId, out var playerData))
+                return;
+
+#if UNITY_EDITOR || UNITY_SERVER
+            LogAuthDiag($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
+#endif
+            ApplyAuthenticatedData(connection.ClientId, playerData);
         }
 
         private void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs stateArgs)
@@ -55,6 +75,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
             instance.InitializeWithOwnerId(connection.ClientId);
+#if UNITY_EDITOR || UNITY_SERVER
+            LogAuthDiag($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, early ApplyAuthenticatedData (store may be empty until token validates)");
+#endif
             ApplyAuthenticatedData(connection.ClientId, instance);
         }
 
@@ -153,7 +176,12 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         private void ApplyAuthenticatedData(int clientId, FishNetPlayerData playerData)
         {
             if (!_authenticatedPlayerDataStore.TryGetByClientId(clientId, out var authData))
+            {
+#if UNITY_EDITOR || UNITY_SERVER
+                LogAuthDiag($"[FishNetPlayersController] ApplyAuthenticatedData miss clientId={clientId} (auth store has no entry yet)");
+#endif
                 return;
+            }
 
             var matchData = new PlayerMatchData
             {
@@ -162,14 +190,46 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             };
             matchData.SetToPlayer(playerData);
 
-            if (string.IsNullOrEmpty(authData.CharacterName))
+#if UNITY_SERVER || UNITY_EDITOR
+            EnsureHubCharacterDataIfNeeded(playerData, authData);
+#endif
+        }
+
+#if UNITY_SERVER || UNITY_EDITOR
+        private void EnsureHubCharacterDataIfNeeded(FishNetPlayerData playerData, AuthenticatedPlayerData authData)
+        {
+            var roster = _serverPayloadController.Payload?.CharacterByPlayerIds;
+            if (roster == null)
                 return;
+
+            if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+                return;
+
+            var characterName = authData.CharacterName;
+            if (string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(authData.PlayerId))
+            {
+                foreach (var container in roster)
+                {
+                    if (container.PlayerId != authData.PlayerId)
+                        continue;
+                    characterName = container.CharacterName ?? string.Empty;
+                    break;
+                }
+            }
 
             var characterData = new PlayerCharacterData
             {
-                CharacterName = authData.CharacterName
+                CharacterName = characterName ?? string.Empty
             };
             characterData.SetToPlayer(playerData);
         }
+#endif
+
+#if UNITY_EDITOR || UNITY_SERVER
+        private static void LogAuthDiag(string message)
+        {
+            Debug.Log(message);
+        }
+#endif
     }
 }

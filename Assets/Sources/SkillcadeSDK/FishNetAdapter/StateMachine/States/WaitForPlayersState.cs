@@ -115,10 +115,24 @@ namespace SkillcadeSDK.FishNetAdapter.States
 #if UNITY_SERVER || UNITY_EDITOR
                 if (_serverPayloadController.Payload == null || _serverPayloadController.Payload.CharacterByPlayerIds == null)
                     continue;
-                
-                if (!PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+
+                if (!PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
+                    continue;
+
+                var roster = _serverPayloadController.Payload.CharacterByPlayerIds;
+                var rosterListsPlayer = false;
+                foreach (var entry in roster)
                 {
-                    Debug.Log($"[WaitForPlayersState] Got player {playerData.PlayerNetworkId} without character data");
+                    if (entry.PlayerId == matchData.PlayerId)
+                    {
+                        rosterListsPlayer = true;
+                        break;
+                    }
+                }
+
+                if (rosterListsPlayer && !PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+                {
+                    Debug.Log($"[WaitForPlayersState] Blocking start: networkId={playerData.PlayerNetworkId} playerId={matchData.PlayerId} is on CHARACTER_BY_PLAYER_IDS roster but has no PlayerCharacterData; totalPlayers={totalPlayers} targetCount={_connectionController.ActiveConfig.TargetPlayerCount}");
                     return;
                 }
 #endif

@@ -41,7 +41,21 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         public void RemoveClient(int clientId)
         {
+            if (!_dataByClientId.TryGetValue(clientId, out var removed))
+                return;
+
             _dataByClientId.Remove(clientId);
+
+            if (string.IsNullOrEmpty(removed.PlayerId))
+                return;
+
+            foreach (var entry in _dataByClientId.Values)
+            {
+                if (entry.PlayerId == removed.PlayerId)
+                    return;
+            }
+
+            _knownPlayerIds.Remove(removed.PlayerId);
         }
     }
 }
