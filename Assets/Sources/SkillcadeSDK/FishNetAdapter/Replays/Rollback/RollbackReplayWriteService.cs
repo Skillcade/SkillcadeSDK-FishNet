@@ -124,8 +124,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
 
         public void SetCurrentTick(int tick)
         {
-            // if (_active)
-            //     Debug.Log($"[RollbackReplayWriteService] set current tick to {tick}");
             _currentTick = tick;
         }
 
@@ -171,9 +169,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
                 }
             }
 
-            if (!_lastEventTickFlushedByClient.TryGetValue(clientId, out var lastFlushedTick))
-                lastFlushedTick = int.MinValue;
-
+            var lastFlushedTick = _lastEventTickFlushedByClient.GetValueOrDefault(clientId, int.MinValue);
             foreach (var eventTick in _eventsByTick.Keys.Where(k => lastFlushedTick < k && k <= tick).OrderBy(k => k))
             {
                 var bucket = _eventsByTick[eventTick];
@@ -209,7 +205,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             }
 
             var frameData = stream.ToArray();
-
             var currentFrame = new FrameInfo
             {
                 FrameId = clientFrames.Count,

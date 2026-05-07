@@ -1,5 +1,4 @@
 ﻿using FishNet.Object;
-using SkillcadeSDK;
 using SkillcadeSDK.Replays.Components;
 using UnityEngine;
 
@@ -63,15 +62,13 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
                 return;
 
             EnsureWriteStartedSubscription();
-            if (ReplayWriteService == null || !ReplayWriteService.IsActive)
+            if (ReplayWriteService == null)
                 return;
 
             _runtimeObjectId = _networkObject.ObjectId;
             Register();
             _isRegistered = true;
-#if UNITY_EDITOR
-            Debug.Log($"[FishNetReplayObjectHandler] Refreshing replay registration on object {RuntimeNetworkObjectId}");
-#endif
+            // Debug.Log($"[FishNetReplayObjectHandler] Refreshing replay registration on object {RuntimeNetworkObjectId}");
         }
 
         private void EnsureWriteStartedSubscription()
