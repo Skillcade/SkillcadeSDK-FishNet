@@ -34,14 +34,14 @@ namespace SkillcadeSDK.FishNetAdapter.Match
 
             try
             {
-                if (!string.IsNullOrEmpty(winnerPlayerId))
+                if (!string.IsNullOrEmpty(winnerPlayerId) || winnerClientId == 0)
                 {
                     Debug.Log($"[MatchService] Sending winner {winnerClientId} with stable PlayerId {winnerPlayerId}");
                     await _webRequester.SendWinner(winnerPlayerId);
                     return;
                 }
 
-                if (winnerClientId == 0 || !_playersController.TryGetPlayerData(winnerClientId, out var playerData))
+                if (!_playersController.TryGetPlayerData(winnerClientId, out var playerData))
                 {
                     Debug.Log($"[MatchService] Invalid winner ID: {winnerClientId}");
                     return;
