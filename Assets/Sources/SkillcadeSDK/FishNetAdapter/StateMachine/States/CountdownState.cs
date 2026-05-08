@@ -1,9 +1,14 @@
+using System;
 using SkillcadeSDK.Common;
 using SkillcadeSDK.Common.Players;
+using SkillcadeSDK.Connection;
 using SkillcadeSDK.Events;
 using SkillcadeSDK.StateMachine;
 using UnityEngine;
 using VContainer;
+#if UNITY_SERVER || UNITY_EDITOR
+using SkillcadeSDK.ServerValidation;
+#endif
 
 namespace SkillcadeSDK.FishNetAdapter.States
 {
@@ -19,6 +24,10 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly ISkillcadeConfig _config;
         [Inject] private readonly IPlayerSpawner _playerSpawner;
         [Inject] private readonly GameEventBus _eventBus;
+        [Inject] private readonly IConnectionController _connectionController;
+#if UNITY_SERVER || UNITY_EDITOR
+        [Inject] private readonly ServerPayloadController _serverPayloadController;
+#endif
 
         private float _timer;
         private int _lastSecond = -1;
@@ -51,7 +60,23 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
 
             if (IsServer && _timer <= 0f)
-                StateMachine.SetStateServer(GameStateType.Running);
+                StateMachine.SetStateServer(GameStateType.Running, new RunningStateData(GetGameDuration()));
+        }
+
+        private float GetGameDuration()
+        {
+            float duration = _config.GameTimerSeconds;
+
+#if UNITY_SERVER || UNITY_EDITOR
+            if (_connectionController.ActiveConfig.SkillcadeHubIntegrated && _serverPayloadController.Payload != null)
+            {
+                var remaining = (float)(_serverPayloadController.Payload.SessionExpiresAt - DateTime.UtcNow).TotalSeconds;
+                if (remaining > 0f)
+                    duration = remaining;
+            }
+#endif
+
+            return duration;
         }
     }
 }
