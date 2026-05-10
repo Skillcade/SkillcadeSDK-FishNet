@@ -61,7 +61,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
 
             if (IsServer && _gameTimer <= 0f)
-                StateMachine.SetStateServer(GameStateType.Finished, new FinishedStateData(-1, FinishReason.Draw));
+                StateMachine.SetStateServer(GameStateType.Finished, new FinishedStateData(0, FinishReason.Draw));
         }
 
         public override void OnExit(GameStateType nextState)

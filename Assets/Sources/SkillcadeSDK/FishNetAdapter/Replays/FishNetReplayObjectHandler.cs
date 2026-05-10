@@ -23,7 +23,6 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
         
         private void OnDestroy()
         {
-            Debug.Log("[FishNetReplayObjectHandler] object handler on destroy");
             if (_isRegistered)
             {
                 _isRegistered = false;
