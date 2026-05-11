@@ -55,15 +55,20 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private void OnServerAuthenticationResult(NetworkConnection connection, bool authenticated)
         {
+            Debug.Log("[FishNetPlayersController] Server authentication result");
             if (!authenticated)
+            {
+                Debug.Log("[FishNetPlayersController] not authenticated");
                 return;
+            }
 
             if (!TryGetPlayerData(connection.ClientId, out var playerData))
+            {
+                Debug.Log("[FishNetPlayersController] Can't get player data");
                 return;
+            }
 
-#if UNITY_EDITOR || UNITY_SERVER
-            LogAuthDiag($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
-#endif
+            Debug.Log($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
             ApplyAuthenticatedData(connection.ClientId, playerData);
         }
 
@@ -75,9 +80,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
             instance.InitializeWithOwnerId(connection.ClientId);
-#if UNITY_EDITOR || UNITY_SERVER
-            LogAuthDiag($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, early ApplyAuthenticatedData (store may be empty until token validates)");
-#endif
+            Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, early ApplyAuthenticatedData (store may be empty until token validates)");
             ApplyAuthenticatedData(connection.ClientId, instance);
         }
 
@@ -149,20 +152,21 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (!IsServerInitialized)
                 return;
             
-            if (_serverPayloadController.Payload == null || _serverPayloadController.Payload.CharacterByPlayerIds == null)
-                return;
-            
-            if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+            if (_serverPayloadController.Payload?.CharacterByPlayerIds == null)
                 return;
             
             if (!PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
                 return;
 
+            if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+                return;
+            
             foreach (var characterContainer in _serverPayloadController.Payload.CharacterByPlayerIds)
             {
                 if (characterContainer.PlayerId != matchData.PlayerId)
                     continue;
 
+                Debug.Log($"[FishNetPlayersController] Set character {characterContainer.CharacterName} to player {matchData.PlayerId}");
                 var characterData = new PlayerCharacterData
                 {
                     CharacterName = characterContainer.CharacterName
@@ -175,11 +179,10 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private void ApplyAuthenticatedData(int clientId, FishNetPlayerData playerData)
         {
+            Debug.Log($"[FishNetPlayersController] Apply authenticated data for {clientId}");
             if (!_authenticatedPlayerDataStore.TryGetByClientId(clientId, out var authData))
             {
-#if UNITY_EDITOR || UNITY_SERVER
-                LogAuthDiag($"[FishNetPlayersController] ApplyAuthenticatedData miss clientId={clientId} (auth store has no entry yet)");
-#endif
+                Debug.Log($"[FishNetPlayersController] ApplyAuthenticatedData miss clientId={clientId} (auth store has no entry yet)");
                 return;
             }
 
@@ -188,6 +191,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 Nickname = authData.Nickname,
                 PlayerId = authData.PlayerId
             };
+            Debug.Log($"[FishNetPlayersController] Set match data, nickname {authData.Nickname}, player {authData.PlayerId}");
             matchData.SetToPlayer(playerData);
 
 #if UNITY_SERVER || UNITY_EDITOR
@@ -198,37 +202,41 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 #if UNITY_SERVER || UNITY_EDITOR
         private void EnsureHubCharacterDataIfNeeded(FishNetPlayerData playerData, AuthenticatedPlayerData authData)
         {
+            Debug.Log("[FishNetPlayersController] Apply character data");
             var roster = _serverPayloadController.Payload?.CharacterByPlayerIds;
             if (roster == null)
+            {
+                Debug.Log("[FishNetPlayersController] No characters config");
                 return;
+            }
 
             if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
+            {
+                Debug.Log("[FishNetPlayersController] Already has character data");
                 return;
+            }
 
             var characterName = authData.CharacterName;
+            Debug.Log($"[FishNetPlayersController] Got {characterName} from auth data for player {authData.PlayerId}");
             if (string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(authData.PlayerId))
             {
                 foreach (var container in roster)
                 {
                     if (container.PlayerId != authData.PlayerId)
                         continue;
+                    
                     characterName = container.CharacterName ?? string.Empty;
+                    Debug.Log($"[FishNetPlayersController] Override character name for player {authData.PlayerId} with {characterName}");
                     break;
                 }
             }
 
+            Debug.Log($"[FishNetPlayersController] Set result character name {characterName} to player {authData.PlayerId}");
             var characterData = new PlayerCharacterData
             {
                 CharacterName = characterName ?? string.Empty
             };
             characterData.SetToPlayer(playerData);
-        }
-#endif
-
-#if UNITY_EDITOR || UNITY_SERVER
-        private static void LogAuthDiag(string message)
-        {
-            Debug.Log(message);
         }
 #endif
     }

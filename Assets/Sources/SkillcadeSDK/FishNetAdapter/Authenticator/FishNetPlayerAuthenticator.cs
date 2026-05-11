@@ -128,16 +128,24 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
         private string GetCharacterName(string playerId)
         {
+            Debug.Log($"[FishNetPlayerAuthenticator] Requesting character name for {playerId}");
             var characterByPlayerIds = _serverPayloadController.Payload?.CharacterByPlayerIds;
             if (characterByPlayerIds == null)
+            {
+                Debug.Log("[FishNetPlayerAuthenticator] No characters config");
                 return null;
+            }
 
             foreach (var characterContainer in characterByPlayerIds)
             {
                 if (characterContainer.PlayerId == playerId)
+                {
+                    Debug.Log($"[FishNetPlayerAuthenticator] got {characterContainer.CharacterName}");
                     return characterContainer.CharacterName;
+                }
             }
 
+            Debug.Log($"[FishNetPlayerAuthenticator] Not found character name for player {playerId}");
             return null;
         }
 #endif

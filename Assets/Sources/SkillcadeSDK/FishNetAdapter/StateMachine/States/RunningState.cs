@@ -1,3 +1,4 @@
+using FishNet.Managing;
 using SkillcadeSDK.Common.Level;
 using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Connection;
@@ -18,21 +19,24 @@ namespace SkillcadeSDK.FishNetAdapter.States
     {
         public override GameStateType Type => GameStateType.Running;
 
+        [Inject] private readonly NetworkManager _networkManager;
         [Inject] private readonly IPlayerSpawner _playerSpawner;
         [Inject] private readonly RespawnServiceProvider _respawnServiceProvider;
         [Inject] private readonly GameEventBus _eventBus;
         [Inject] private readonly ReplayWriteService _replayWriteService;
         [Inject] private readonly IConnectionController _connectionController;
 
-        private float _gameTimer;
+        private float _gameTime;
+        private double _startTime;
         private int _lastSecond = -1;
 
         protected override void OnEnter(GameStateType prevState, RunningStateData data)
         {
             base.OnEnter(prevState, data);
 
-            _gameTimer = data.GameDurationSeconds;
-            _lastSecond = Mathf.CeilToInt(_gameTimer);
+            _gameTime = data.GameDurationSeconds;
+            _startTime = _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
+            _lastSecond = Mathf.CeilToInt(_gameTime);
             _eventBus.Publish(new RunningTimerTickEvent(_lastSecond));
 
             if (IsServer)
@@ -50,17 +54,19 @@ namespace SkillcadeSDK.FishNetAdapter.States
         public override void Update()
         {
             base.Update();
+            
+            var time = _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
+            var timePassed = time - _startTime;
+            var timeRemaining = _gameTime - timePassed;
 
-            _gameTimer -= Time.deltaTime;
-
-            int currentSecond = Mathf.CeilToInt(_gameTimer);
+            var currentSecond = Mathf.CeilToInt((float)timeRemaining);
             if (currentSecond != _lastSecond && currentSecond >= 0)
             {
                 _lastSecond = currentSecond;
                 _eventBus.Publish(new RunningTimerTickEvent(currentSecond));
             }
 
-            if (IsServer && _gameTimer <= 0f)
+            if (IsServer && _gameTime <= 0f)
                 StateMachine.SetStateServer(GameStateType.Finished, new FinishedStateData(0, FinishReason.Draw));
         }
 
