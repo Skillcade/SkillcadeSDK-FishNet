@@ -66,7 +66,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
                 _eventBus.Publish(new RunningTimerTickEvent(currentSecond));
             }
 
-            if (IsServer && _gameTime <= 0f)
+            if (IsServer && timeRemaining <= 0f)
                 StateMachine.SetStateServer(GameStateType.Finished, new FinishedStateData(0, FinishReason.Draw));
         }
 
