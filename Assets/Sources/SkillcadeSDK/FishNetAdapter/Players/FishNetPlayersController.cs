@@ -210,12 +210,6 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 return;
             }
 
-            if (PlayerCharacterData.TryGetFromPlayer(playerData, out _))
-            {
-                Debug.Log("[FishNetPlayersController] Already has character data");
-                return;
-            }
-
             var characterName = authData.CharacterName;
             Debug.Log($"[FishNetPlayersController] Got {characterName} from auth data for player {authData.PlayerId}");
             if (string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(authData.PlayerId))
@@ -232,10 +226,10 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             }
 
             Debug.Log($"[FishNetPlayersController] Set result character name {characterName} to player {authData.PlayerId}");
-            var characterData = new PlayerCharacterData
-            {
-                CharacterName = characterName ?? string.Empty
-            };
+            if (!PlayerCharacterData.TryGetFromPlayer(playerData, out var characterData))
+                characterData = new PlayerCharacterData();
+
+            characterData.CharacterName = characterName;
             characterData.SetToPlayer(playerData);
         }
 #endif
