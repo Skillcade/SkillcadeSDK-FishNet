@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using SkillcadeSDK.Common;
 using SkillcadeSDK.Common.Players;
@@ -70,7 +71,14 @@ namespace SkillcadeSDK.FishNetAdapter.States
             Debug.Log("[FinishedState] Sending replays and winner");
 #if UNITY_SERVER || UNITY_EDITOR
             Debug.Log("[FinishedState] Waiting for replays");
-            await _replaySendService.WaitForReplaySent();
+            try
+            {
+                await _replaySendService.WaitForReplaySent();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[FinishedState] Error on sending replays: {e}");
+            }
             Debug.Log("[FinishedState] Replays sent");
 #endif
             await Task.Delay(5000);
