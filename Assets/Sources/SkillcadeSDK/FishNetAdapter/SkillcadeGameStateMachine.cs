@@ -1,5 +1,7 @@
+using System.Linq;
 using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.StateMachine;
+using UnityEngine;
 using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter
@@ -35,7 +37,8 @@ namespace SkillcadeSDK.FishNetAdapter
         {
             if (!IsServer)
                 return;
-            
+
+            Debug.Log($"[SkillcadeGameStateMachine] Player {playerId} removed");
             if (CurrentStateType == GameStateType.Finished)
                 return;
 
@@ -54,6 +57,8 @@ namespace SkillcadeSDK.FishNetAdapter
                 }
             }
 
+            Debug.Log($"[SkillcadeGameStateMachine] In game players {inGamePlayers}, total: {_playersController.GetAllPlayersData().Count()}, state: {CurrentStateType}");
+            
             if (inGamePlayers == 0 && CurrentStateType != GameStateType.WaitForPlayers)
                 SetStateServer(GameStateType.WaitForPlayers);
             else if (inGamePlayers == 1)

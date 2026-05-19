@@ -100,7 +100,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
                 if (!_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
                 {
-                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting player {payload.PlayerId}: target player count reached");
+                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting player {connection.ClientId} - {payload.PlayerId}: target player count reached");
                     SetAuthenticationResult(connection, false);
                     return;
                 }
