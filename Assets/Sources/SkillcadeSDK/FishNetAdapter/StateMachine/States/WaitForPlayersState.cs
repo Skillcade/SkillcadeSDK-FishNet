@@ -138,10 +138,11 @@ namespace SkillcadeSDK.FishNetAdapter.States
 #endif
             }
 
-            bool shouldStartGame = _connectionController.ActiveConfig.TargetPlayerCount > 0
+            var shouldStartGame = _connectionController.ActiveConfig.TargetPlayerCount > 0
                 ? totalPlayers >= _connectionController.ActiveConfig.TargetPlayerCount
                 : readyPlayers >= 1 && notReadyPlayers == 0;
 
+            Debug.Log($"[WaitForPlayersState] should start game: {shouldStartGame}, total players: {totalPlayers}, ready: {readyPlayers}, not ready: {notReadyPlayers}");
             if (!shouldStartGame)
                 return;
 

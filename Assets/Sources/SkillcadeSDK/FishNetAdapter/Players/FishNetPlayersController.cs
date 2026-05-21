@@ -77,24 +77,31 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (stateArgs.ConnectionState != RemoteConnectionState.Started)
                 return;
 
+            Debug.Log($"[FishNetPlayersController] Remote connection started for {connection.ClientId}, creating player data");
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
             RegisterPlayerData(connection.ClientId, instance);
             instance.InitializeWithOwnerId(connection.ClientId);
-            Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, early ApplyAuthenticatedData (store may be empty until token validates)");
+            Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, call ApplyAuthenticatedData");
             ApplyAuthenticatedData(connection.ClientId, instance);
         }
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
         {
+            Debug.Log($"[FishNetPlayersController] Register player data {playerId}");
             if (!_players.TryAdd(playerId, playerData))
+            {
+                Debug.Log("[FishNetPlayersController] Already registered, exiting");
                 return;
-            
+            }
+
+            Debug.Log("[FishNetPlayersController] Invoke OnPlayerAdded");
             OnPlayerAdded?.Invoke(playerId, playerData);
+            Debug.Log("[FishNetPlayersController] Subscribe to data changed");
             playerData.OnChanged += OnPlayerDataChanged;
 
             if (!IsClientInitialized || playerId != LocalPlayerId)
                 return;
-
+            
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 var data = new PlayerMatchData
@@ -108,14 +115,17 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public void UnregisterPlayerData(int playerId)
         {
-            if (_players.Remove(playerId, out var data))
-            {
-                data.OnChanged -= OnPlayerDataChanged;
-                OnPlayerRemoved?.Invoke(playerId, data);
+            Debug.Log($"[FishNetPlayersController] Unregister player data {playerId}");
+            if (!_players.Remove(playerId, out var data))
+                return;
+
+            Debug.Log("[FishNetPlayersController] Unsubscribe to data changed");
+            data.OnChanged -= OnPlayerDataChanged;
+            Debug.Log("[FishNetPlayersController] Call OnPlayerRemoved");
+            OnPlayerRemoved?.Invoke(playerId, data);
                 
-                if (IsServerInitialized)
-                    _authenticatedPlayerDataStore.RemoveClient(playerId);
-            }
+            if (IsServerInitialized)
+                _authenticatedPlayerDataStore.RemoveClient(playerId);
         }
 
         public bool TryGetPlayerData(int playerId, out FishNetPlayerData data)

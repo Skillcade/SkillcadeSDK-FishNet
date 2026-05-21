@@ -87,7 +87,8 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     PlayerId = playerId,
                     Nickname = $"Player_{connection.ClientId}"
                 });
-                
+
+                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId}");
                 SetAuthenticationResult(connection, true);
                 return;
             }
@@ -96,7 +97,11 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             {
                 var payload = _sessionValidator.ValidateToken(message.Token);
                 if (!string.Equals(payload.PlayerId, message.PlayerId, StringComparison.Ordinal))
-                    throw new InvalidOperationException("Auth player id does not match signed join token.");
+                {
+                    Debug.Log($"[FishNetPlayerAuthenticator] Rejecting player {payload.PlayerId} - auth player id does not match signed join token.");
+                    SetAuthenticationResult(connection, false);
+                    return;
+                }
 
                 if (!_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
                 {
@@ -105,14 +110,16 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     return;
                 }
 
+                string characterName = GetCharacterName(payload.PlayerId);
                 _clientTokens[connection.ClientId] = payload;
                 _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
                 {
                     ClientId = connection.ClientId,
                     PlayerId = payload.PlayerId,
                     Nickname = message.Nickname,
-                    CharacterName = GetCharacterName(payload.PlayerId)
+                    CharacterName = characterName
                 });
+                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId} - {payload.PlayerId} - {message.Nickname}, character: {characterName}");
                 SetAuthenticationResult(connection, true);
             }
             catch (Exception e)
@@ -128,7 +135,6 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
         private string GetCharacterName(string playerId)
         {
-            Debug.Log($"[FishNetPlayerAuthenticator] Requesting character name for {playerId}");
             var characterByPlayerIds = _serverPayloadController.Payload?.CharacterByPlayerIds;
             if (characterByPlayerIds == null)
             {
@@ -140,7 +146,6 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             {
                 if (characterContainer.PlayerId == playerId)
                 {
-                    Debug.Log($"[FishNetPlayerAuthenticator] got {characterContainer.CharacterName}");
                     return characterContainer.CharacterName;
                 }
             }
