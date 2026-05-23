@@ -78,11 +78,9 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.StatsOverlay
                 _sb.AppendLine();
                 _sb.AppendLine("---");
 
-                int localPlayerId = _playersController.LocalPlayerId;
-
                 foreach (var playerData in _playersController.GetAllPlayersData())
                 {
-                    bool isLocal = playerData.PlayerNetworkId == localPlayerId;
+                    var isLocal = _playersController.IsLocalPlayerId(playerData.PlayerNetworkId);
 
                     // Get nickname
                     string nickname;

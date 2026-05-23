@@ -52,7 +52,7 @@ namespace SkillcadeSDK.FishNetAdapter.DebugPanel.Providers
 
         private void OnPlayerDataUpdated(int playerId, FishNetPlayerData data)
         {
-            if (playerId != _playersController.LocalPlayerId)
+            if (_playersController.IsLocalPlayerId(playerId))
                 return;
 
             if (!PlayerPingData.TryGetFromPlayer(data, out var pingData))

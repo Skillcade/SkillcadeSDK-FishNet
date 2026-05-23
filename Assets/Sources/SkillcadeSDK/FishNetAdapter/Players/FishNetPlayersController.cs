@@ -20,8 +20,6 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         public event IPlayersController<FishNetPlayerData, IDataContainer>.PlayerDataEventHandler OnPlayerDataUpdated;
         public event IPlayersController<FishNetPlayerData, IDataContainer>.PlayerDataEventHandler OnPlayerRemoved;
         
-        public int LocalPlayerId => NetworkManager.ClientManager.Connection.ClientId;
-
         [SerializeField] private FishNetPlayerData _playerDataPrefab;
 
         [Inject] private readonly ConnectionConfig _connectionConfig;
@@ -38,7 +36,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             base.OnStartNetwork();
             if (IsServerInitialized)
             {
-                NetworkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
+                // NetworkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
                 NetworkManager.ServerManager.OnAuthenticationResult += OnServerAuthenticationResult;
             }
         }
@@ -48,7 +46,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             base.OnStopNetwork();
             if (IsServerInitialized)
             {
-                NetworkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
+                // NetworkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
                 NetworkManager.ServerManager.OnAuthenticationResult -= OnServerAuthenticationResult;
             }
         }
@@ -61,28 +59,27 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 Debug.Log("[FishNetPlayersController] not authenticated");
                 return;
             }
+            
+            var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
+            RegisterPlayerData(connection.ClientId, instance);
+            instance.InitializeWithOwnerId(connection.ClientId);
 
-            if (!TryGetPlayerData(connection.ClientId, out var playerData))
-            {
-                Debug.Log("[FishNetPlayersController] Can't get player data");
-                return;
-            }
+            // if (!TryGetPlayerData(connection.ClientId, out var playerData))
+            // {
+            //     Debug.Log("[FishNetPlayersController] Can't get player data");
+            //     return;
+            // }
 
-            Debug.Log($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
-            ApplyAuthenticatedData(connection.ClientId, playerData);
+            // Debug.Log($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
+            // ApplyAuthenticatedData(connection.ClientId, playerData);
         }
 
         private void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs stateArgs)
         {
+            Debug.Log($"[FishNetPlayersController] Remote connection state for {connection.ClientId}: {stateArgs.ConnectionState}");
             if (stateArgs.ConnectionState != RemoteConnectionState.Started)
                 return;
-
-            Debug.Log($"[FishNetPlayersController] Remote connection started for {connection.ClientId}, creating player data");
-            var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
-            RegisterPlayerData(connection.ClientId, instance);
-            instance.InitializeWithOwnerId(connection.ClientId);
-            Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={connection.ClientId}, call ApplyAuthenticatedData");
-            ApplyAuthenticatedData(connection.ClientId, instance);
+            
         }
 
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
@@ -94,19 +91,25 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 return;
             }
 
-            Debug.Log("[FishNetPlayersController] Invoke OnPlayerAdded");
-            OnPlayerAdded?.Invoke(playerId, playerData);
             Debug.Log("[FishNetPlayersController] Subscribe to data changed");
             playerData.OnChanged += OnPlayerDataChanged;
+            Debug.Log("[FishNetPlayersController] Invoke OnPlayerAdded");
+            OnPlayerAdded?.Invoke(playerId, playerData);
 
-            if (!IsClientInitialized || playerId != LocalPlayerId)
+            if (IsServerInitialized)
+            {
+                Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={playerId}, call ApplyAuthenticatedData");
+                ApplyAuthenticatedData(playerId, playerData);
+            }
+            
+            if (!IsClientInitialized || !TryGetLocalPlayerId(out var localPlayerId) || playerId != localPlayerId)
                 return;
             
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 var data = new PlayerMatchData
                 {
-                    Nickname = $"Player_{LocalPlayerId}",
+                    Nickname = $"Player_{localPlayerId}",
                     PlayerId = ""
                 };
                 data.SetToPlayer(playerData);
@@ -143,13 +146,31 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         public bool TryGetLocalPlayerData(out FishNetPlayerData data)
         {
             data = null;
-            if (NetworkManager == null || NetworkManager.ClientManager == null)
+            if (NetworkObject == null || NetworkManager == null || NetworkManager.ClientManager == null)
                 return false;
 
             if (NetworkManager.ClientManager.Connection == null)
                 return false;
             
             return TryGetPlayerData(NetworkManager.ClientManager.Connection.ClientId, out data);
+        }
+
+        public bool TryGetLocalPlayerId(out int localPlayerId)
+        {
+            localPlayerId = -1;
+            if (NetworkObject == null || NetworkManager == null || NetworkManager.ClientManager == null)
+                return false;
+
+            if (NetworkManager.ClientManager.Connection == null)
+                return false;
+
+            localPlayerId = NetworkManager.ClientManager.Connection.ClientId;
+            return true;
+        }
+
+        public bool IsLocalPlayerId(int playerId)
+        {
+            return TryGetLocalPlayerId(out var localPlayerId) && localPlayerId == playerId;
         }
 
         public IEnumerable<FishNetPlayerData> GetAllPlayersData() => _players.Values;
@@ -196,7 +217,16 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 return;
             }
 
-            var matchData = new PlayerMatchData
+            if (PlayerMatchData.TryGetFromPlayer(playerData, out var matchData))
+            {
+                if (matchData.Nickname.Equals(authData.Nickname) && matchData.PlayerId.Equals(authData.PlayerId))
+                {
+                    Debug.Log("[FishNetPlayersController] Already has match data");
+                    return;
+                }
+            }
+
+            matchData = new PlayerMatchData
             {
                 Nickname = authData.Nickname,
                 PlayerId = authData.PlayerId

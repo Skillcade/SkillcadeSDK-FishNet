@@ -5,10 +5,10 @@ using SkillcadeSDK.Events;
 using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.StateMachine;
 using VContainer;
+using UnityEngine;
 
 #if UNITY_SERVER || UNITY_EDITOR
 using SkillcadeSDK.ServerValidation;
-using UnityEngine;
 #endif
 
 namespace SkillcadeSDK.FishNetAdapter.States
