@@ -81,7 +81,6 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
             Debug.Log("[FinishedState] Replays sent");
 #endif
-            await Task.Delay(5000);
             Debug.Log("[FinishedState] Send winner");
             await _matchService.SendWinnerToBackend(winnerId, winnerPlayerId);
         }
