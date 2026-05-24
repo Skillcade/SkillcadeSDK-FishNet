@@ -13,4 +13,9 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
     {
         public bool Passed;
     }
+
+    /// <summary>
+    /// Empty marker: server permanently disconnects this client (anticheat, admin kick, etc.).
+    /// </summary>
+    public struct ServerKickBroadcast : IBroadcast { }
 }

@@ -22,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         [Inject] private readonly WebBridge _webBridge;
         [Inject] private readonly AuthenticatedPlayerDataStore _authenticatedPlayerDataStore;
         [Inject] private readonly PlayerReconnectService _reconnectService;
+        [Inject] private readonly IConnectionController _connectionController;
 
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly SessionValidator _sessionValidator;
@@ -37,6 +38,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             base.InitializeOnce(networkManager);
             
             NetworkManager.ClientManager.RegisterBroadcast<TokenResponseBroadcast>(HandleTokenResponse);
+            NetworkManager.ClientManager.RegisterBroadcast<ServerKickBroadcast>(HandleServerKick);
             NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
             NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
@@ -67,7 +69,20 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         private void HandleTokenResponse(TokenResponseBroadcast message, Channel channel)
         {
-            Debug.Log($"[FishNetPlayerAuthenticator] Token validation passed: {message.Passed}");
+            if (!message.Passed)
+            {
+                Debug.Log("[PlayerDisconnect] Authentication rejected by server (TokenResponse Passed=false)");
+                _connectionController.NotifyPermanentDisconnect(DisconnectionReason.Kicked);
+                return;
+            }
+
+            Debug.Log("[FishNetPlayerAuthenticator] Token validation passed");
+        }
+
+        private void HandleServerKick(ServerKickBroadcast message, Channel channel)
+        {
+            Debug.Log("[PlayerDisconnect] Server kick broadcast received");
+            _connectionController.NotifyPermanentDisconnect(DisconnectionReason.Kicked);
         }
 
         private void HandleToken(NetworkConnection connection, TokenBroadcast message, Channel channel)
@@ -84,7 +99,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 var payload = _sessionValidator.ValidateToken(message.Token);
                 if (!string.Equals(payload.PlayerId, message.PlayerId, StringComparison.Ordinal))
                 {
-                    Debug.Log($"[FishNetPlayerAuthenticator] Rejecting player {payload.PlayerId} - auth player id does not match signed join token.");
+                    Debug.Log($"[PlayerDisconnect] Rejecting player {payload.PlayerId} - auth player id does not match signed join token.");
                     SetAuthenticationResult(connection, false);
                     return;
                 }
@@ -92,7 +107,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 bool isReconnect = _reconnectService.IsGraceActive(payload.PlayerId);
                 if (!isReconnect && !_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
                 {
-                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting player {connection.ClientId} - {payload.PlayerId}: target player count reached");
+                    Debug.LogWarning($"[PlayerDisconnect] Rejecting player {connection.ClientId} - {payload.PlayerId}: target player count reached");
                     SetAuthenticationResult(connection, false);
                     return;
                 }
@@ -131,7 +146,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             }
             catch (Exception e)
             {
-                Debug.LogError($"[FishNetPlayerAuthenticator] Error on validating client token: {e}");
+                Debug.LogError($"[PlayerDisconnect] Error on validating client token: {e}");
                 SetAuthenticationResult(connection, false);
             }
 #else
@@ -171,7 +186,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             string playerId = connection.ClientId.ToString();
             if (!_authenticatedPlayerDataStore.CanAcceptPlayer(playerId, _connectionConfig.TargetPlayerCount))
             {
-                Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting client {connection.ClientId}: target player count reached");
+                Debug.LogWarning($"[PlayerDisconnect] Rejecting client {connection.ClientId}: target player count reached");
                 SetAuthenticationResult(connection, false);
                 return;
             }
