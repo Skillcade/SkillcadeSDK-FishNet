@@ -29,6 +29,7 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.RegisterInstance(_replayWriteController);
             builder.RegisterInstance(_rollbackReplayController);
             builder.Register<AuthenticatedPlayerDataStore>(Lifetime.Singleton);
+            builder.Register<PlayerReconnectService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
             builder.Register<RollbackReplayWriteService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
 
             builder.Register<FishNetPingService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();

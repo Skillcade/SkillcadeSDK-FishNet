@@ -1,7 +1,9 @@
 ﻿using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Transporting;
+using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.Replays;
+using UnityEngine;
 using VContainer;
 
 namespace SkillcadeSDK.FishNetAdapter.Replays
@@ -9,6 +11,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
     public class FishNetReplayWriteController : NetworkBehaviour
     {
         [Inject] private readonly ReplayWriteService _replayWriteService;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
 
         public override void OnStartNetwork()
         {
@@ -43,8 +46,10 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
 
         private void HandleFrameDataBroadcast(NetworkConnection connection, FishNetFrameDataBroadcast frameData, Channel channel)
         {
-            // Debug.Log($"[FishNetReplayWriteController] Received client {connection.ClientId} frame {frameData.FrameId} with length {frameData.FrameData.Length}");
-            _replayWriteService.AddFrameFromClient(connection.ClientId, frameData.FrameId, frameData.FrameData);
+            int replayClientId = _reconnectService.ResolveReplayClientId(connection.ClientId);
+            if (replayClientId != connection.ClientId)
+                Debug.Log($"[PlayerReconnect] FrameDataBroadcast: connection={connection.ClientId} routed to replay world={replayClientId}");
+            _replayWriteService.AddFrameFromClient(replayClientId, frameData.FrameId, frameData.FrameData);
         }
     }
 }

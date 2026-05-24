@@ -15,6 +15,13 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public int PlayerNetworkId => _localOwnerId >= 0 ? _localOwnerId : OwnerId;
 
+        /// <summary>
+        /// Server-side: stable copy of the FishNet connection id used to authenticate this
+        /// player. Distinct from <see cref="PlayerNetworkId"/> after a reconnect, where the
+        /// network id is remapped to the original ReplayClientId.
+        /// </summary>
+        public int ServerConnectionClientId { get; private set; } = -1;
+
         private readonly SyncDictionary<string, IDataContainer> _data = new(new SyncTypeSettings(WritePermission.ServerOnly));
         private readonly List<MonoBehaviour> _playerObjects = new();
 
@@ -26,10 +33,27 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             base.OnStartNetwork();
             this.InjectToMe();
-            if (OwnerId > 0)
+            if (IsServerInitialized && OwnerId > 0)
+                ServerConnectionClientId = OwnerId;
+            // On the server, registration is driven explicitly by FishNetPlayersController.OnServerAuthenticationResult
+            // so the correct (possibly remapped) ReplayClientId is used. Clients still need to
+            // auto-register here based on the FishNet OwnerId they receive.
+            if (OwnerId > 0 && !IsServerInitialized)
                 _fishNetPlayersController.RegisterPlayerData(OwnerId, this);
 
             _data.OnChange += OnDataChanged;
+        }
+
+        /// <summary>
+        /// Server-only helper used during a reconnect so that <see cref="PlayerNetworkId"/>
+        /// on the server matches the stable ReplayClientId rather than the brand-new FishNet
+        /// connection id. Clients keep their (new) connection id and are not made aware of
+        /// the remap — replay frames are still routed correctly by the server-side mapping.
+        /// </summary>
+        public void RebindServerNetworkId(int replayClientId)
+        {
+            _localOwnerId = replayClientId;
+            _fishNetPlayersController.RegisterPlayerData(replayClientId, this);
         }
 
         [ObserversRpc(BufferLast = true)]
@@ -42,8 +66,14 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         public override void OnStopNetwork()
         {
             base.OnStopNetwork();
-            var id = _localOwnerId >= 0 ? _localOwnerId : OwnerId;
-            _fishNetPlayersController.UnregisterPlayerData(id);
+            // Prefer the explicit local owner id (set on server via RebindServerNetworkId or on
+            // clients via InitializeWithOwnerId). Fall back to OwnerId, and finally to the
+            // saved ServerConnectionClientId in case FishNet has already cleared the connection.
+            int id = _localOwnerId >= 0
+                ? _localOwnerId
+                : (OwnerId > 0 ? OwnerId : ServerConnectionClientId);
+            if (id >= 0)
+                _fishNetPlayersController.UnregisterPlayerData(id);
             _data.OnChange -= OnDataChanged;
         }
 

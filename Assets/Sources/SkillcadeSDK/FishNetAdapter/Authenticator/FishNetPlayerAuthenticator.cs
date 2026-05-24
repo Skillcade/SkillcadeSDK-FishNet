@@ -4,6 +4,7 @@ using FishNet.Connection;
 using FishNet.Managing;
 using FishNet.Transporting;
 using SkillcadeSDK.Connection;
+using SkillcadeSDK.FishNetAdapter.Players;
 using UnityEngine;
 using VContainer;
 
@@ -20,7 +21,8 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         [Inject] private readonly ConnectionConfig _connectionConfig;
         [Inject] private readonly WebBridge _webBridge;
         [Inject] private readonly AuthenticatedPlayerDataStore _authenticatedPlayerDataStore;
-        
+        [Inject] private readonly PlayerReconnectService _reconnectService;
+
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly SessionValidator _sessionValidator;
         [Inject] private readonly ServerPayloadController _serverPayloadController;
@@ -73,23 +75,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
-                string playerId = connection.ClientId.ToString();
-                if (!_authenticatedPlayerDataStore.CanAcceptPlayer(playerId, _connectionConfig.TargetPlayerCount))
-                {
-                    Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting client {connection.ClientId}: target player count reached");
-                    SetAuthenticationResult(connection, false);
-                    return;
-                }
-
-                _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
-                {
-                    ClientId = connection.ClientId,
-                    PlayerId = playerId,
-                    Nickname = $"Player_{connection.ClientId}"
-                });
-
-                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId}");
-                SetAuthenticationResult(connection, true);
+                HandleNonHubAuth(connection, message);
                 return;
             }
             
@@ -103,15 +89,36 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     return;
                 }
 
-                if (!_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
+                bool isReconnect = _reconnectService.IsGraceActive(payload.PlayerId);
+                if (!isReconnect && !_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
                 {
                     Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting player {connection.ClientId} - {payload.PlayerId}: target player count reached");
                     SetAuthenticationResult(connection, false);
                     return;
                 }
 
+                if (isReconnect)
+                {
+                    if (!_reconnectService.TryAcceptReconnect(
+                            connection.ClientId,
+                            message.PlayerId,
+                            message.Nickname,
+                            message.Token,
+                            payload,
+                            hubIntegrated: true,
+                            out _,
+                            out var rejectReason))
+                    {
+                        Debug.LogWarning($"[FishNetPlayerAuthenticator] [PlayerReconnect] Rejecting reconnect for player {payload.PlayerId}: {rejectReason}");
+                        SetAuthenticationResult(connection, false);
+                        return;
+                    }
+                    Debug.Log($"[FishNetPlayerAuthenticator] [PlayerReconnect] Reconnect accepted for player {payload.PlayerId} on new connection {connection.ClientId}");
+                }
+
                 string characterName = GetCharacterName(payload.PlayerId);
                 _clientTokens[connection.ClientId] = payload;
+                _reconnectService.RememberAuthToken(connection.ClientId, message.Token, payload);
                 _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
                 {
                     ClientId = connection.ClientId,
@@ -119,7 +126,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     Nickname = message.Nickname,
                     CharacterName = characterName
                 });
-                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId} - {payload.PlayerId} - {message.Nickname}, character: {characterName}");
+                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId} - {payload.PlayerId} - {message.Nickname}, character: {characterName}, reconnect={isReconnect}");
                 SetAuthenticationResult(connection, true);
             }
             catch (Exception e)
@@ -133,6 +140,53 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         }
 
 #if UNITY_SERVER || UNITY_EDITOR
+        private void HandleNonHubAuth(NetworkConnection connection, TokenBroadcast message)
+        {
+            // Without a signed token we cannot prove "same player" across reconnects.
+            // If there is at least one active grace slot, hand it to this connection as a
+            // best-effort reconnect; otherwise fall through to the regular target-count check.
+            if (_reconnectService.PendingInGameCount > 0
+                && _reconnectService.TryAcceptReconnect(
+                    connection.ClientId,
+                    message.PlayerId,
+                    message.Nickname,
+                    joinToken: null,
+                    payload: null,
+                    hubIntegrated: false,
+                    out var slot,
+                    out _))
+            {
+                _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
+                {
+                    ClientId = connection.ClientId,
+                    PlayerId = slot.PlayerId,
+                    Nickname = slot.Nickname ?? $"Player_{connection.ClientId}",
+                    CharacterName = slot.CharacterName
+                });
+                Debug.Log($"[FishNetPlayerAuthenticator] [PlayerReconnect] Non-hub reconnect: connection={connection.ClientId} took grace slot for player {slot.PlayerId}");
+                SetAuthenticationResult(connection, true);
+                return;
+            }
+
+            string playerId = connection.ClientId.ToString();
+            if (!_authenticatedPlayerDataStore.CanAcceptPlayer(playerId, _connectionConfig.TargetPlayerCount))
+            {
+                Debug.LogWarning($"[FishNetPlayerAuthenticator] Rejecting client {connection.ClientId}: target player count reached");
+                SetAuthenticationResult(connection, false);
+                return;
+            }
+
+            _authenticatedPlayerDataStore.Store(new AuthenticatedPlayerData
+            {
+                ClientId = connection.ClientId,
+                PlayerId = playerId,
+                Nickname = $"Player_{connection.ClientId}"
+            });
+
+            Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId}");
+            SetAuthenticationResult(connection, true);
+        }
+
         private string GetCharacterName(string playerId)
         {
             var characterByPlayerIds = _serverPayloadController.Payload?.CharacterByPlayerIds;

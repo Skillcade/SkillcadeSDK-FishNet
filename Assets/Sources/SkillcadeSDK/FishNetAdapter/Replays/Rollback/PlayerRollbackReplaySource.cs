@@ -1,6 +1,7 @@
 ﻿using FishNet.Managing.Timing;
 using FishNet.Object;
 using SkillcadeSDK.FishNetAdapter.ColliderRollback;
+using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.StateMachine;
 using UnityEngine;
 using VContainer;
@@ -12,6 +13,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
         [SerializeField] private PlayerRollbackSource _rollbackSource;
 
         [Inject] private readonly IObjectResolver _objectResolver;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
 
         public override void OnStartNetwork()
         {
@@ -35,7 +37,10 @@ namespace SkillcadeSDK.FishNetAdapter.Replays.Rollback
             if (!_objectResolver.TryResolve(out RollbackReplayWriteService writeService))
                 return;
 
-            writeService.CaptureClientFrame(OwnerId, (int)writeTick);
+            int replayClientId = _reconnectService != null
+                ? _reconnectService.ResolveReplayClientId(OwnerId)
+                : OwnerId;
+            writeService.CaptureClientFrame(replayClientId, (int)writeTick);
         }
     }
 }

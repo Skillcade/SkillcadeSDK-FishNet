@@ -24,7 +24,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         [Inject] private readonly ConnectionConfig _connectionConfig;
         [Inject] private readonly AuthenticatedPlayerDataStore _authenticatedPlayerDataStore;
-        
+        [Inject] private readonly PlayerReconnectService _reconnectService;
+        [Inject] private readonly IPlayerSpawner _playerSpawner;
+
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
 #endif
@@ -53,25 +55,51 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private void OnServerAuthenticationResult(NetworkConnection connection, bool authenticated)
         {
-            Debug.Log("[FishNetPlayersController] Server authentication result");
+            Debug.Log($"[FishNetPlayersController] Server authentication result for connection={connection.ClientId}, authenticated={authenticated}");
             if (!authenticated)
             {
                 Debug.Log("[FishNetPlayersController] not authenticated");
                 return;
             }
-            
+
+            string playerId = null;
+            if (_authenticatedPlayerDataStore.TryGetByClientId(connection.ClientId, out var authData))
+                playerId = authData.PlayerId;
+
+            int replayClientId = _reconnectService.RegisterAuthenticatedConnection(playerId, connection.ClientId);
+
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
-            RegisterPlayerData(connection.ClientId, instance);
+
+            if (replayClientId != connection.ClientId)
+            {
+                Debug.Log($"[FishNetPlayersController] [PlayerReconnect] Reconnect spawn: player={playerId}, replayClientId={replayClientId}, newConnection={connection.ClientId}");
+                instance.RebindServerNetworkId(replayClientId);
+            }
+            else
+            {
+                RegisterPlayerData(replayClientId, instance);
+            }
+
+            // Clients always learn their player's owner id from the new connection id — they
+            // don't need to know that the server is remapping it for replay/grace continuity.
             instance.InitializeWithOwnerId(connection.ClientId);
 
-            // if (!TryGetPlayerData(connection.ClientId, out var playerData))
-            // {
-            //     Debug.Log("[FishNetPlayersController] Can't get player data");
-            //     return;
-            // }
+            if (!string.IsNullOrEmpty(playerId) && _reconnectService.TryConsumeReconnectSlot(playerId, out var slot))
+            {
+                ApplyReconnectSnapshot(instance, slot);
+                _playerSpawner.EnsurePlayersSpawned();
+            }
+        }
 
-            // Debug.Log($"[FishNetPlayersController] ApplyAuthenticatedData after auth success clientId={connection.ClientId}");
-            // ApplyAuthenticatedData(connection.ClientId, playerData);
+        private void ApplyReconnectSnapshot(FishNetPlayerData instance, PlayerReconnectService.GraceSlot slot)
+        {
+            Debug.Log($"[FishNetPlayersController] [PlayerReconnect] Apply reconnect snapshot: player={slot.PlayerId}, replayClientId={slot.ReplayClientId}, hasCharacterData={slot.HasCharacterData}");
+            if (slot.MatchData != null)
+                slot.MatchData.SetToPlayer(instance);
+            if (slot.InGameData != null)
+                slot.InGameData.SetToPlayer(instance);
+            if (slot.HasCharacterData && slot.CharacterData != null)
+                slot.CharacterData.SetToPlayer(instance);
         }
 
         private void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs stateArgs)
@@ -85,9 +113,22 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         public void RegisterPlayerData(int playerId, FishNetPlayerData playerData)
         {
             Debug.Log($"[FishNetPlayersController] Register player data {playerId}");
+
+            foreach (var existing in _players)
+            {
+                if (!ReferenceEquals(existing.Value, playerData))
+                    continue;
+
+                if (existing.Key == playerId)
+                    Debug.Log("[FishNetPlayersController] Already registered, exiting");
+                else
+                    Debug.LogWarning($"[FishNetPlayersController] Instance already registered under key {existing.Key}, refusing to register under {playerId}");
+                return;
+            }
+
             if (!_players.TryAdd(playerId, playerData))
             {
-                Debug.Log("[FishNetPlayersController] Already registered, exiting");
+                Debug.LogWarning($"[FishNetPlayersController] Key {playerId} already in use by a different instance, exiting");
                 return;
             }
 
@@ -98,8 +139,11 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
             if (IsServerInitialized)
             {
-                Debug.Log($"[FishNetPlayersController] RemoteConnection Started clientId={playerId}, call ApplyAuthenticatedData");
-                ApplyAuthenticatedData(playerId, playerData);
+                int authLookupId = playerData != null && playerData.ServerConnectionClientId >= 0
+                    ? playerData.ServerConnectionClientId
+                    : playerId;
+                Debug.Log($"[FishNetPlayersController] RemoteConnection Started networkId={playerId}, authLookup={authLookupId}, call ApplyAuthenticatedData");
+                ApplyAuthenticatedData(authLookupId, playerData);
             }
             
             if (!IsClientInitialized || !TryGetLocalPlayerId(out var localPlayerId) || playerId != localPlayerId)
@@ -126,9 +170,13 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             data.OnChanged -= OnPlayerDataChanged;
             Debug.Log("[FishNetPlayersController] Call OnPlayerRemoved");
             OnPlayerRemoved?.Invoke(playerId, data);
-                
+
             if (IsServerInitialized)
-                _authenticatedPlayerDataStore.RemoveClient(playerId);
+            {
+                int connectionClientId = data != null && data.ServerConnectionClientId >= 0 ? data.ServerConnectionClientId : playerId;
+                _authenticatedPlayerDataStore.RemoveClient(connectionClientId);
+                _reconnectService.ForgetConnection(connectionClientId);
+            }
         }
 
         public bool TryGetPlayerData(int playerId, out FishNetPlayerData data)
