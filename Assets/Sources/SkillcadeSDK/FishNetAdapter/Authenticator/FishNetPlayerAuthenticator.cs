@@ -42,7 +42,6 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
             NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
-            Debug.Log($"[PlayerAuth] Authenticator initialized (hubIntegrated={_connectionConfig.SkillcadeHubIntegrated}, targetPlayers={_connectionConfig.TargetPlayerCount})");
         }
 
         private void HandleConnectionState(ClientConnectionStateArgs stateArgs)
