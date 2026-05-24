@@ -298,7 +298,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 }
 
                 float remaining = slot.Deadline - Time.realtimeSinceStartup;
-                Debug.Log($"[PlayerReconnect] Hub matched grace slot player={slot.PlayerId} replayClientId={slot.ReplayClientId} lastConnection={slot.LastConnectionClientId} remainingSec={remaining:F2} snapshotTokenLen={slot.JoinToken?.Length ?? 0}");
+                Debug.Log($"[PlayerReconnect] Hub matched grace slot player={slot.PlayerId} replayClientId={slot.ReplayClientId} lastConnection={slot.LastConnectionClientId} remainingSec={remaining:F2}");
 
 #if UNITY_SERVER || UNITY_EDITOR
                 if (!string.Equals(slot.JoinToken, joinToken, StringComparison.Ordinal))
