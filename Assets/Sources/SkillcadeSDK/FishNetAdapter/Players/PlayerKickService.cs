@@ -28,15 +28,20 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 ? $"[PlayerDisconnect] Kicking connection {connection.ClientId}"
                 : $"[PlayerDisconnect] Kicking connection {connection.ClientId}: {log}";
 
-            Debug.Log(message);
+            Debug.Log($"[PlayerDisconnect] Kick step 1/2: broadcasting ServerKickBroadcast to connection={connection.ClientId}");
             _networkManager.ServerManager.Broadcast(connection, new ServerKickBroadcast());
+            Debug.Log($"[PlayerDisconnect] Kick step 2/2: FishNet Kick connection={connection.ClientId}");
             connection.Kick(KickReason.ExploitAttempt, LoggingType.Common, message);
         }
 
         public void Kick(int clientId, string log = null)
         {
+            Debug.Log($"[PlayerDisconnect] Kick requested clientId={clientId} log={log}");
             if (!_networkManager.IsServerStarted)
+            {
+                Debug.LogWarning("[PlayerDisconnect] Kick ignored: server not started");
                 return;
+            }
 
             if (!_networkManager.ServerManager.Clients.TryGetValue(clientId, out var connection))
             {

@@ -19,19 +19,22 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         public bool CanAcceptPlayer(string playerId, int targetPlayerCount)
         {
+            bool result;
             if (targetPlayerCount <= 0)
-                return true;
+                result = true;
+            else if (string.IsNullOrEmpty(playerId))
+                result = _knownPlayerIds.Count < targetPlayerCount;
+            else if (_knownPlayerIds.Contains(playerId))
+                result = false;
+            else
+                result = _knownPlayerIds.Count < targetPlayerCount;
 
-            if (string.IsNullOrEmpty(playerId))
-                return _knownPlayerIds.Count < targetPlayerCount;
+            if (!result && !string.IsNullOrEmpty(playerId) && _knownPlayerIds.Contains(playerId))
+                Debug.Log($"[PlayerAuth] CanAcceptPlayer({playerId})=false: duplicate (reserved={_reservedPlayerIds.Contains(playerId)}) knownCount={_knownPlayerIds.Count} target={targetPlayerCount}");
+            else
+                Debug.Log($"[PlayerAuth] CanAcceptPlayer({playerId})={result} knownCount={_knownPlayerIds.Count} reservedCount={_reservedPlayerIds.Count} target={targetPlayerCount}");
 
-            if (_knownPlayerIds.Contains(playerId))
-            {
-                Debug.Log($"[AuthenticatedPlayerDataStore] Duplicate connection from player {playerId}");
-                return false;
-            }
-            
-            return _knownPlayerIds.Count < targetPlayerCount;
+            return result;
         }
 
         public void Store(AuthenticatedPlayerData data)

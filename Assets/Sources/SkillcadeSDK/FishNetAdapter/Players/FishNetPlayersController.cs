@@ -55,24 +55,27 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private void OnServerAuthenticationResult(NetworkConnection connection, bool authenticated)
         {
-            Debug.Log($"[FishNetPlayersController] Server authentication result for connection={connection.ClientId}, authenticated={authenticated}");
+            Debug.Log($"[PlayerAuth] OnServerAuthenticationResult connection={connection.ClientId} authenticated={authenticated}");
             if (!authenticated)
             {
-                Debug.Log("[FishNetPlayersController] not authenticated");
+                Debug.Log($"[PlayerAuth] Spawn skipped — connection={connection.ClientId} not authenticated");
                 return;
             }
 
             string playerId = null;
             if (_authenticatedPlayerDataStore.TryGetByClientId(connection.ClientId, out var authData))
                 playerId = authData.PlayerId;
+            else
+                Debug.LogWarning($"[PlayerAuth] No auth store entry for connection={connection.ClientId} before spawn");
 
             int replayClientId = _reconnectService.RegisterAuthenticatedConnection(playerId, connection.ClientId);
+            Debug.Log($"[PlayerAuth] Spawning player object connection={connection.ClientId} playerId={playerId} replayClientId={replayClientId}");
 
             var instance = NetworkManager.ServerManager.InstantiateAndSpawn(_playerDataPrefab, Vector3.zero, Quaternion.identity, connection);
 
             if (replayClientId != connection.ClientId)
             {
-                Debug.Log($"[FishNetPlayersController] [PlayerReconnect] Reconnect spawn: player={playerId}, replayClientId={replayClientId}, newConnection={connection.ClientId}");
+                Debug.Log($"[PlayerReconnect] Rebind network id: player={playerId} replayClientId={replayClientId} connection={connection.ClientId}");
                 instance.RebindServerNetworkId(replayClientId);
             }
             else
@@ -84,10 +87,21 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             // don't need to know that the server is remapping it for replay/grace continuity.
             instance.InitializeWithOwnerId(connection.ClientId);
 
-            if (!string.IsNullOrEmpty(playerId) && _reconnectService.TryConsumeReconnectSlot(playerId, out var slot))
+            if (string.IsNullOrEmpty(playerId))
             {
+                Debug.Log($"[PlayerReconnect] No playerId for connection={connection.ClientId} — skip grace slot consume");
+                return;
+            }
+
+            if (_reconnectService.TryConsumeReconnectSlot(playerId, out var slot))
+            {
+                Debug.Log($"[PlayerReconnect] Consumed grace slot for player={playerId}, respawning");
                 ApplyReconnectSnapshot(instance, slot);
                 _playerSpawner.EnsurePlayersSpawned();
+            }
+            else
+            {
+                Debug.Log($"[PlayerReconnect] No grace slot to consume for player={playerId} (first connect or grace not started/expired)");
             }
         }
 
@@ -174,6 +188,10 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (IsServerInitialized)
             {
                 int connectionClientId = data != null && data.ServerConnectionClientId >= 0 ? data.ServerConnectionClientId : playerId;
+                string removedPlayerId = null;
+                if (PlayerMatchData.TryGetFromPlayer(data, out var matchData))
+                    removedPlayerId = matchData.PlayerId;
+                Debug.Log($"[PlayerReconnect] Unregister connection={connectionClientId} networkId={playerId} playerId={removedPlayerId}");
                 _authenticatedPlayerDataStore.RemoveClient(connectionClientId);
                 _reconnectService.ForgetConnection(connectionClientId);
             }

@@ -64,7 +64,10 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public bool IsGraceActive(string playerId)
         {
-            return !string.IsNullOrEmpty(playerId) && _graceSlots.ContainsKey(playerId);
+            bool active = !string.IsNullOrEmpty(playerId) && _graceSlots.ContainsKey(playerId);
+            if (!string.IsNullOrEmpty(playerId))
+                Debug.Log($"[PlayerReconnect] IsGraceActive({playerId})={active} (pending={_graceSlots.Count})");
+            return active;
         }
 
         public bool TryGetGraceSlot(string playerId, out GraceSlot slot)
@@ -156,6 +159,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             _joinTokenByConnectionId[connectionClientId] = joinToken;
             _tokenPayloadByConnectionId[connectionClientId] = payload;
+            Debug.Log($"[PlayerReconnect] RememberAuthToken connection={connectionClientId} playerId={payload?.PlayerId} sessionId={payload?.GameSessionId} tokenLen={joinToken?.Length ?? 0}");
         }
 #endif
 
@@ -271,16 +275,36 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             slot = null;
             rejectReason = null;
 
+#if UNITY_SERVER || UNITY_EDITOR
+            Debug.Log($"[PlayerReconnect] TryAcceptReconnect connection={newConnectionClientId} broadcastPlayerId={broadcastPlayerId} nickname={broadcastNickname} hub={hubIntegrated} pendingSlots={_graceSlots.Count} tokenLen={joinToken?.Length ?? 0}");
+#else
+            Debug.Log($"[PlayerReconnect] TryAcceptReconnect connection={newConnectionClientId} broadcastPlayerId={broadcastPlayerId} nickname={broadcastNickname} hub={hubIntegrated} pendingSlots={_graceSlots.Count}");
+#endif
+
             if (hubIntegrated)
             {
-                if (string.IsNullOrEmpty(broadcastPlayerId) || !_graceSlots.TryGetValue(broadcastPlayerId, out slot))
+                if (string.IsNullOrEmpty(broadcastPlayerId))
+                {
+                    rejectReason = "broadcast PlayerId is empty";
+                    Debug.LogWarning($"[PlayerReconnect] Hub reject: {rejectReason}");
                     return false;
+                }
+
+                if (!_graceSlots.TryGetValue(broadcastPlayerId, out slot))
+                {
+                    rejectReason = $"no active grace slot for player {broadcastPlayerId}";
+                    Debug.LogWarning($"[PlayerReconnect] Hub reject: {rejectReason}. Active slots: [{FormatGraceSlotKeys()}]");
+                    return false;
+                }
+
+                float remaining = slot.Deadline - Time.realtimeSinceStartup;
+                Debug.Log($"[PlayerReconnect] Hub matched grace slot player={slot.PlayerId} replayClientId={slot.ReplayClientId} lastConnection={slot.LastConnectionClientId} remainingSec={remaining:F2} snapshotTokenLen={slot.JoinToken?.Length ?? 0}");
 
 #if UNITY_SERVER || UNITY_EDITOR
                 if (!string.Equals(slot.JoinToken, joinToken, StringComparison.Ordinal))
                 {
                     rejectReason = "join token does not match grace snapshot";
-                    Debug.LogWarning($"[PlayerReconnect] Reject reconnect player={broadcastPlayerId}: {rejectReason}");
+                    Debug.LogWarning($"[PlayerReconnect] Hub reject player={broadcastPlayerId}: {rejectReason} (snapshotLen={slot.JoinToken?.Length ?? 0} incomingLen={joinToken?.Length ?? 0})");
                     slot = null;
                     return false;
                 }
@@ -288,7 +312,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 if (!TokenPayloadEquals(slot.TokenPayload, payload))
                 {
                     rejectReason = "session token payload does not match grace snapshot";
-                    Debug.LogWarning($"[PlayerReconnect] Reject reconnect player={broadcastPlayerId}: {rejectReason}");
+                    Debug.LogWarning($"[PlayerReconnect] Hub reject player={broadcastPlayerId}: {rejectReason} snapshotPlayer={slot.TokenPayload?.PlayerId} incomingPlayer={payload?.PlayerId} snapshotSession={slot.TokenPayload?.GameSessionId} incomingSession={payload?.GameSessionId}");
                     slot = null;
                     return false;
                 }
@@ -359,6 +383,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public void ForgetConnection(int connectionClientId)
         {
+            Debug.Log($"[PlayerReconnect] ForgetConnection connection={connectionClientId} (clearing auth token cache only)");
 #if UNITY_SERVER || UNITY_EDITOR
             _joinTokenByConnectionId.Remove(connectionClientId);
             _tokenPayloadByConnectionId.Remove(connectionClientId);
@@ -379,6 +404,20 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             _joinTokenByConnectionId.Clear();
             _tokenPayloadByConnectionId.Clear();
 #endif
+        }
+
+        private string FormatGraceSlotKeys()
+        {
+            if (_graceSlots.Count == 0)
+                return string.Empty;
+
+            var parts = new List<string>(_graceSlots.Count);
+            foreach (var kvp in _graceSlots)
+            {
+                float remaining = kvp.Value.Deadline - Time.realtimeSinceStartup;
+                parts.Add($"{kvp.Key}(replay={kvp.Value.ReplayClientId},t={remaining:F1}s)");
+            }
+            return string.Join(", ", parts);
         }
 
 #if UNITY_SERVER || UNITY_EDITOR

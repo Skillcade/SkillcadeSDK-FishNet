@@ -42,18 +42,24 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             NetworkManager.ClientManager.OnClientConnectionState += HandleConnectionState;
 
             NetworkManager.ServerManager.RegisterBroadcast<TokenBroadcast>(HandleToken, false);
+            Debug.Log($"[PlayerAuth] Authenticator initialized (hubIntegrated={_connectionConfig.SkillcadeHubIntegrated}, targetPlayers={_connectionConfig.TargetPlayerCount})");
         }
 
         private void HandleConnectionState(ClientConnectionStateArgs stateArgs)
         {
+            Debug.Log($"[PlayerAuth] Client connection state={stateArgs.ConnectionState} transportIndex={stateArgs.TransportIndex}");
             if (stateArgs.ConnectionState != LocalConnectionState.Started)
                 return;
-            
+
+            bool hub = _connectionConfig.SkillcadeHubIntegrated;
+            bool hasPayload = _webBridge.Payload != null;
+            bool hasToken = hasPayload && !string.IsNullOrEmpty(_webBridge.Payload.JoinToken);
+
             string token = "empty";
-            if (_connectionConfig.SkillcadeHubIntegrated)
+            if (hub)
             {
-                if (_webBridge.Payload == null || string.IsNullOrEmpty(_webBridge.Payload.JoinToken))
-                    Debug.LogError("[FishNetPlayerAuthenticator] No payload on connection");
+                if (!hasToken)
+                    Debug.LogError($"[PlayerAuth] Hub client connected but JoinToken missing (hasPayload={hasPayload})");
                 else
                     token = _webBridge.Payload.JoinToken;
             }
@@ -64,6 +70,8 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 PlayerId = _webBridge.Payload?.PlayerId,
                 Nickname = _webBridge.Payload?.Nickname,
             };
+
+            Debug.Log($"[PlayerAuth] Sending TokenBroadcast hub={hub} playerId={message.PlayerId} nickname={message.Nickname} tokenLen={token?.Length ?? 0}");
             NetworkManager.ClientManager.Broadcast(message);
         }
 
@@ -71,23 +79,24 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         {
             if (!message.Passed)
             {
-                Debug.Log("[PlayerDisconnect] Authentication rejected by server (TokenResponse Passed=false)");
+                Debug.Log("[PlayerAuth] [PlayerDisconnect] TokenResponse Passed=false — permanent disconnect");
                 _connectionController.NotifyPermanentDisconnect(DisconnectionReason.Kicked);
                 return;
             }
 
-            Debug.Log("[FishNetPlayerAuthenticator] Token validation passed");
+            Debug.Log("[PlayerAuth] TokenResponse Passed=true — authentication succeeded on client");
         }
 
         private void HandleServerKick(ServerKickBroadcast message, Channel channel)
         {
-            Debug.Log("[PlayerDisconnect] Server kick broadcast received");
+            Debug.Log("[PlayerDisconnect] ServerKickBroadcast received — permanent disconnect");
             _connectionController.NotifyPermanentDisconnect(DisconnectionReason.Kicked);
         }
 
         private void HandleToken(NetworkConnection connection, TokenBroadcast message, Channel channel)
         {
 #if UNITY_SERVER || UNITY_EDITOR
+            Debug.Log($"[PlayerAuth] HandleToken connection={connection.ClientId} hub={_connectionConfig.SkillcadeHubIntegrated} broadcastPlayerId={message.PlayerId} nickname={message.Nickname} tokenLen={message.Token?.Length ?? 0}");
             if (!_connectionConfig.SkillcadeHubIntegrated)
             {
                 HandleNonHubAuth(connection, message);
@@ -96,24 +105,36 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             
             try
             {
+                Debug.Log($"[PlayerAuth] Hub: validating join token for connection={connection.ClientId}");
                 var payload = _sessionValidator.ValidateToken(message.Token);
+                Debug.Log($"[PlayerAuth] Hub: token ok playerId={payload.PlayerId} sessionId={payload.GameSessionId} expires={payload.ExpiresAtUtc:O}");
+
                 if (!string.Equals(payload.PlayerId, message.PlayerId, StringComparison.Ordinal))
                 {
-                    Debug.Log($"[PlayerDisconnect] Rejecting player {payload.PlayerId} - auth player id does not match signed join token.");
+                    Debug.LogWarning($"[PlayerAuth] [PlayerDisconnect] Reject: token playerId={payload.PlayerId} != broadcast playerId={message.PlayerId}");
                     SetAuthenticationResult(connection, false);
                     return;
                 }
 
                 bool isReconnect = _reconnectService.IsGraceActive(payload.PlayerId);
-                if (!isReconnect && !_authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount))
+                int pendingGrace = _reconnectService.PendingInGameCount;
+                Debug.Log($"[PlayerAuth] Hub: isGraceActive({payload.PlayerId})={isReconnect} pendingGraceSlots={pendingGrace}");
+
+                if (!isReconnect)
                 {
-                    Debug.LogWarning($"[PlayerDisconnect] Rejecting player {connection.ClientId} - {payload.PlayerId}: target player count reached");
-                    SetAuthenticationResult(connection, false);
-                    return;
+                    bool canAccept = _authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount);
+                    Debug.Log($"[PlayerAuth] Hub: CanAcceptPlayer({payload.PlayerId})={canAccept} targetCount={_connectionConfig.TargetPlayerCount}");
+                    if (!canAccept)
+                    {
+                        Debug.LogWarning($"[PlayerDisconnect] Reject connection={connection.ClientId} player={payload.PlayerId}: lobby full or duplicate");
+                        SetAuthenticationResult(connection, false);
+                        return;
+                    }
                 }
 
                 if (isReconnect)
                 {
+                    Debug.Log($"[PlayerAuth] [PlayerReconnect] Hub reconnect attempt connection={connection.ClientId} player={payload.PlayerId}");
                     if (!_reconnectService.TryAcceptReconnect(
                             connection.ClientId,
                             message.PlayerId,
@@ -124,11 +145,11 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                             out _,
                             out var rejectReason))
                     {
-                        Debug.LogWarning($"[FishNetPlayerAuthenticator] [PlayerReconnect] Rejecting reconnect for player {payload.PlayerId}: {rejectReason}");
+                        Debug.LogWarning($"[PlayerAuth] [PlayerReconnect] Reject reconnect player={payload.PlayerId} connection={connection.ClientId}: {rejectReason ?? "unknown"}");
                         SetAuthenticationResult(connection, false);
                         return;
                     }
-                    Debug.Log($"[FishNetPlayerAuthenticator] [PlayerReconnect] Reconnect accepted for player {payload.PlayerId} on new connection {connection.ClientId}");
+                    Debug.Log($"[PlayerAuth] [PlayerReconnect] Hub reconnect accepted player={payload.PlayerId} connection={connection.ClientId}");
                 }
 
                 string characterName = GetCharacterName(payload.PlayerId);
@@ -141,12 +162,12 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     Nickname = message.Nickname,
                     CharacterName = characterName
                 });
-                Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId} - {payload.PlayerId} - {message.Nickname}, character: {characterName}, reconnect={isReconnect}");
+                Debug.Log($"[PlayerAuth] Hub auth success connection={connection.ClientId} player={payload.PlayerId} nickname={message.Nickname} character={characterName} isReconnect={isReconnect}");
                 SetAuthenticationResult(connection, true);
             }
             catch (Exception e)
             {
-                Debug.LogError($"[PlayerDisconnect] Error on validating client token: {e}");
+                Debug.LogError($"[PlayerAuth] [PlayerDisconnect] Token validation failed connection={connection.ClientId}: {e}");
                 SetAuthenticationResult(connection, false);
             }
 #else
@@ -157,6 +178,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 #if UNITY_SERVER || UNITY_EDITOR
         private void HandleNonHubAuth(NetworkConnection connection, TokenBroadcast message)
         {
+            Debug.Log($"[PlayerAuth] Non-hub auth connection={connection.ClientId} pendingGrace={_reconnectService.PendingInGameCount}");
             // Without a signed token we cannot prove "same player" across reconnects.
             // If there is at least one active grace slot, hand it to this connection as a
             // best-effort reconnect; otherwise fall through to the regular target-count check.
@@ -178,12 +200,13 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     Nickname = slot.Nickname ?? $"Player_{connection.ClientId}",
                     CharacterName = slot.CharacterName
                 });
-                Debug.Log($"[FishNetPlayerAuthenticator] [PlayerReconnect] Non-hub reconnect: connection={connection.ClientId} took grace slot for player {slot.PlayerId}");
+                Debug.Log($"[PlayerAuth] [PlayerReconnect] Non-hub reconnect ok connection={connection.ClientId} slotPlayer={slot.PlayerId}");
                 SetAuthenticationResult(connection, true);
                 return;
             }
 
             string playerId = connection.ClientId.ToString();
+            Debug.Log($"[PlayerAuth] Non-hub new player path connection={connection.ClientId} syntheticPlayerId={playerId}");
             if (!_authenticatedPlayerDataStore.CanAcceptPlayer(playerId, _connectionConfig.TargetPlayerCount))
             {
                 Debug.LogWarning($"[PlayerDisconnect] Rejecting client {connection.ClientId}: target player count reached");
@@ -198,7 +221,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 Nickname = $"Player_{connection.ClientId}"
             });
 
-            Debug.Log($"[FishNetPlayerAuthenticator] Authenticate player {connection.ClientId}");
+            Debug.Log($"[PlayerAuth] Non-hub auth success connection={connection.ClientId}");
             SetAuthenticationResult(connection, true);
         }
 
@@ -226,11 +249,13 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
         private void SetAuthenticationResult(NetworkConnection connection, bool result)
         {
+            Debug.Log($"[PlayerAuth] SetAuthenticationResult connection={connection.ClientId} passed={result}");
             var response = new TokenResponseBroadcast
             {
                 Passed = result
             };
             NetworkManager.ServerManager.Broadcast(connection, response);
+            Debug.Log($"[PlayerAuth] TokenResponseBroadcast sent connection={connection.ClientId} passed={result}");
             OnAuthenticationResult?.Invoke(connection, result);
         }
     }

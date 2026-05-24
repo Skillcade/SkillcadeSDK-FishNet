@@ -41,13 +41,23 @@ namespace SkillcadeSDK.FishNetAdapter
             if (!IsServer)
                 return;
 
-            Debug.Log($"[SkillcadeGameStateMachine] [PlayerReconnect] Player {playerId} removed (currentState={CurrentStateType})");
-            if (CurrentStateType == GameStateType.Finished)
-                return;
+            string matchPlayerId = null;
+            bool wasInGame = fishNetPlayerData != null
+                && PlayerInGameData.TryGetFromPlayer(fishNetPlayerData, out var inGame)
+                && inGame.InGame;
+            if (fishNetPlayerData != null && PlayerMatchData.TryGetFromPlayer(fishNetPlayerData, out var matchData))
+                matchPlayerId = matchData.PlayerId;
 
             int connectionClientId = fishNetPlayerData != null && fishNetPlayerData.ServerConnectionClientId >= 0
                 ? fishNetPlayerData.ServerConnectionClientId
                 : playerId;
+            Debug.Log($"[PlayerReconnect] OnPlayerRemoved networkId={playerId} connection={connectionClientId} matchPlayerId={matchPlayerId} inGame={wasInGame} state={CurrentStateType}");
+            if (CurrentStateType == GameStateType.Finished)
+            {
+                Debug.Log("[PlayerReconnect] Match already Finished — skip grace");
+                return;
+            }
+
             bool graceStarted = _reconnectService.TryBeginGracePeriod(connectionClientId, fishNetPlayerData, CurrentStateType);
             if (graceStarted)
                 Debug.Log($"[SkillcadeGameStateMachine] [PlayerReconnect] Player {playerId} (connection={connectionClientId}) disconnect deferred via reconnect grace");
