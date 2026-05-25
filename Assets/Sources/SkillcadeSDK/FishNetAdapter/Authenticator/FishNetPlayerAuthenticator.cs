@@ -133,7 +133,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
                 if (isReconnect)
                 {
-                    Debug.Log($"[PlayerAuth] [PlayerReconnect] Hub reconnect attempt connection={connection.ClientId} player={payload.PlayerId}");
+                    Debug.Log($"[PlayerAuth] [PlayerReconnect] Hub reconnect attempt connection={connection.ClientId} player={payload.PlayerId} (see [reconnect-tokens] logs for join token comparison)");
                     if (!_reconnectService.TryAcceptReconnect(
                             connection.ClientId,
                             message.PlayerId,

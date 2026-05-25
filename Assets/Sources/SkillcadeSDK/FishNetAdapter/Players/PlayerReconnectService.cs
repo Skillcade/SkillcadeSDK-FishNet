@@ -253,6 +253,9 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             _authStore.ReservePlayerId(matchData.PlayerId);
 
             Debug.Log($"[PlayerReconnect] Begin grace: player={matchData.PlayerId}, replayClientId={replayClientId}, lastConnection={disconnectedClientId}, graceSeconds={grace}, deadline={slot.Deadline:F2}, hasCharacterData={hasCharacterData}, inGamePending={_graceSlots.Count}");
+#if UNITY_SERVER || UNITY_EDITOR
+            LogJoinTokenSnapshot("grace-snapshot", slot.JoinToken, slot.TokenPayload);
+#endif
             return true;
         }
 
@@ -301,18 +304,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 Debug.Log($"[PlayerReconnect] Hub matched grace slot player={slot.PlayerId} replayClientId={slot.ReplayClientId} lastConnection={slot.LastConnectionClientId} remainingSec={remaining:F2}");
 
 #if UNITY_SERVER || UNITY_EDITOR
-                if (!string.Equals(slot.JoinToken, joinToken, StringComparison.Ordinal))
-                {
-                    rejectReason = "join token does not match grace snapshot";
-                    Debug.LogWarning($"[PlayerReconnect] Hub reject player={broadcastPlayerId}: {rejectReason} (snapshotLen={slot.JoinToken?.Length ?? 0} incomingLen={joinToken?.Length ?? 0})");
-                    slot = null;
-                    return false;
-                }
+                LogReconnectTokenComparison(slot.JoinToken, slot.TokenPayload, joinToken, payload);
 
-                if (!TokenPayloadEquals(slot.TokenPayload, payload))
+                bool identityMatch = TokenPayloadMatchesForReconnect(slot.TokenPayload, payload);
+                Debug.Log($"[PlayerReconnect] Hub reconnect identity check (playerId+gameSessionId only): match={identityMatch}");
+
+                if (!identityMatch)
                 {
-                    rejectReason = "session token payload does not match grace snapshot";
-                    Debug.LogWarning($"[PlayerReconnect] Hub reject player={broadcastPlayerId}: {rejectReason} snapshotPlayer={slot.TokenPayload?.PlayerId} incomingPlayer={payload?.PlayerId} snapshotSession={slot.TokenPayload?.GameSessionId} incomingSession={payload?.GameSessionId}");
+                    rejectReason = "session identity does not match grace snapshot (playerId or gameSessionId)";
+                    Debug.LogWarning($"[PlayerReconnect] Hub reject player={broadcastPlayerId}: {rejectReason}");
                     slot = null;
                     return false;
                 }
@@ -421,16 +421,102 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         }
 
 #if UNITY_SERVER || UNITY_EDITOR
-        private static bool TokenPayloadEquals(SessionTokenPayload a, SessionTokenPayload b)
+        /// <summary>
+        /// Grace reconnect: same player in the same match (incoming token already passed ValidateToken).
+        /// </summary>
+        private static bool TokenPayloadMatchesForReconnect(SessionTokenPayload snapshot, SessionTokenPayload incoming)
         {
-            if (a == null || b == null)
+            if (snapshot == null || incoming == null)
                 return false;
 
-            return string.Equals(a.PlayerId, b.PlayerId, StringComparison.Ordinal)
-                   && string.Equals(a.GameSessionId, b.GameSessionId, StringComparison.Ordinal)
-                   && string.Equals(a.Nonce, b.Nonce, StringComparison.Ordinal)
-                   && a.IssuedAtUtc == b.IssuedAtUtc
-                   && a.ExpiresAtUtc == b.ExpiresAtUtc;
+            return string.Equals(snapshot.PlayerId, incoming.PlayerId, StringComparison.Ordinal)
+                   && string.Equals(snapshot.GameSessionId, incoming.GameSessionId, StringComparison.Ordinal);
+        }
+
+        private static void LogJoinTokenSnapshot(string context, string joinToken, SessionTokenPayload payload)
+        {
+            Debug.Log($"[PlayerReconnect] [{context}] joinToken={joinToken ?? "(null)"}");
+            LogSessionPayloadFields(context, payload);
+            Debug.Log($"[PlayerReconnect] [{context}] tokenParts={DescribeJoinTokenParts(joinToken)}");
+        }
+
+        private static void LogReconnectTokenComparison(
+            string snapshotToken,
+            SessionTokenPayload snapshotPayload,
+            string incomingToken,
+            SessionTokenPayload incomingPayload)
+        {
+            bool rawEqual = string.Equals(snapshotToken, incomingToken, StringComparison.Ordinal);
+            Debug.Log($"[PlayerReconnect] [reconnect-tokens] rawJoinTokenEqual={rawEqual} (informational only, not used for accept)");
+
+            LogJoinTokenSnapshot("reconnect-snapshot", snapshotToken, snapshotPayload);
+            LogJoinTokenSnapshot("reconnect-incoming", incomingToken, incomingPayload);
+
+            if (!rawEqual && snapshotToken != null && incomingToken != null)
+                LogJoinTokenDiffHint(snapshotToken, incomingToken);
+        }
+
+        private static void LogSessionPayloadFields(string context, SessionTokenPayload payload)
+        {
+            if (payload == null)
+            {
+                Debug.Log($"[PlayerReconnect] [{context}] parsedPayload=(null)");
+                return;
+            }
+
+            Debug.Log($"[PlayerReconnect] [{context}] parsedPayload playerId={payload.PlayerId} gameSessionId={payload.GameSessionId} nonce={payload.Nonce} issuedAt={payload.IssuedAtUtc:O} expiresAt={payload.ExpiresAtUtc:O}");
+        }
+
+        private static string DescribeJoinTokenParts(string joinToken)
+        {
+            if (string.IsNullOrEmpty(joinToken))
+                return "empty";
+
+            var parts = joinToken.Split('.', 2);
+            if (parts.Length != 2)
+                return $"invalidFormat(parts={parts.Length})";
+
+            return $"payloadB64Len={parts[0].Length} sigB64Len={parts[1].Length} payloadB64Head={SafePrefix(parts[0], 24)} sigB64Head={SafePrefix(parts[1], 16)}";
+        }
+
+        private static void LogJoinTokenDiffHint(string snapshotToken, string incomingToken)
+        {
+            if (snapshotToken.Length != incomingToken.Length)
+            {
+                Debug.Log($"[PlayerReconnect] [reconnect-tokens] length differs snapshot={snapshotToken.Length} incoming={incomingToken.Length}");
+                return;
+            }
+
+            int firstDiff = -1;
+            for (int i = 0; i < snapshotToken.Length; i++)
+            {
+                if (snapshotToken[i] == incomingToken[i])
+                    continue;
+                firstDiff = i;
+                break;
+            }
+
+            if (firstDiff < 0)
+                return;
+
+            int window = 32;
+            int start = Math.Max(0, firstDiff - 8);
+            Debug.Log($"[PlayerReconnect] [reconnect-tokens] firstCharDiffIndex={firstDiff} snapshotAround='{SafeSubstring(snapshotToken, start, window)}' incomingAround='{SafeSubstring(incomingToken, start, window)}'");
+        }
+
+        private static string SafePrefix(string value, int maxLen)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "";
+            return value.Length <= maxLen ? value : value.Substring(0, maxLen) + "...";
+        }
+
+        private static string SafeSubstring(string value, int start, int maxLen)
+        {
+            if (string.IsNullOrEmpty(value) || start >= value.Length)
+                return "";
+            int len = Math.Min(maxLen, value.Length - start);
+            return value.Substring(start, len);
         }
 #endif
     }
