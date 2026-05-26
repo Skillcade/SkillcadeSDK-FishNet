@@ -84,6 +84,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             }
 
             Debug.Log("[PlayerAuth] TokenResponse Passed=true — authentication succeeded on client");
+            _connectionController.NotifyClientAuthenticated();
         }
 
         private void HandleServerKick(ServerKickBroadcast message, Channel channel)
@@ -255,6 +256,13 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             };
             NetworkManager.ServerManager.Broadcast(connection, response);
             Debug.Log($"[PlayerAuth] TokenResponseBroadcast sent connection={connection.ClientId} passed={result}");
+
+            if (!result)
+            {
+                Debug.Log($"[PlayerDisconnect] Auth reject — sending ServerKickBroadcast to connection={connection.ClientId}");
+                NetworkManager.ServerManager.Broadcast(connection, new ServerKickBroadcast());
+            }
+
             OnAuthenticationResult?.Invoke(connection, result);
         }
     }
