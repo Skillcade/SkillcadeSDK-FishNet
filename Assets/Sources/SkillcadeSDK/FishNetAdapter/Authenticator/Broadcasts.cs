@@ -18,4 +18,12 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
     /// Empty marker: server permanently disconnects this client (anticheat, admin kick, etc.).
     /// </summary>
     public struct ServerKickBroadcast : IBroadcast { }
+
+    /// <summary>
+    /// Server-initiated permanent disconnect with optional user-facing message.
+    /// </summary>
+    public struct ServerDisconnectBroadcast : IBroadcast
+    {
+        public string Message;
+    }
 }

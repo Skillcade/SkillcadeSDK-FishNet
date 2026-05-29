@@ -31,6 +31,7 @@ namespace SkillcadeSDK.FishNetAdapter
             builder.Register<AuthenticatedPlayerDataStore>(Lifetime.Singleton);
             builder.Register<PlayerReconnectService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
 #if UNITY_SERVER || UNITY_EDITOR
+            builder.Register<ServerPlayerDisconnectService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
             builder.Register<PlayerKickService>(Lifetime.Singleton);
 #endif
             builder.Register<RollbackReplayWriteService>(Lifetime.Singleton).AsSelf().AsImplementedInterfaces();
