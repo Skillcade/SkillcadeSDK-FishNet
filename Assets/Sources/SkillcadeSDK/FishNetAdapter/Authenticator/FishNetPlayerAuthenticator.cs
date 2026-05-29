@@ -118,7 +118,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             
             try
             {
-                Debug.Log($"[PlayerAuth] Hub: validating join token for connection={connection.ClientId}");
+                Debug.Log($"[PlayerAuth] Hub: validating join token for connection={connection.ClientId} ");
                 var payload = _sessionValidator.ValidateToken(message.Token);
                 Debug.Log($"[PlayerAuth] Hub: token ok playerId={payload.PlayerId} sessionId={payload.GameSessionId} expires={payload.ExpiresAtUtc:O}");
 
