@@ -24,8 +24,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (!TryBeginDisconnect(connection, out var clientId))
                 return;
 
-            var response = new TokenResponseBroadcast { Passed = false };
-            _networkManager.ServerManager.Broadcast(connection, response);
+            var response = new TokenResponseBroadcast { Passed = false, Message = message };
+            BroadcastUnauthenticated(connection, response);
             Debug.Log($"[PlayerDisconnect] Auth failure notify connection={clientId} reason={reason} message={message}");
 
             BeginDisconnectRoutine(connection, clientId, reason, message, includeLegacyKickBroadcast: true, resendTokenResponseOnRetry: true);
@@ -150,15 +150,24 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 return;
 
             if (includeTokenResponse)
-                _networkManager.ServerManager.Broadcast(connection, new TokenResponseBroadcast { Passed = false });
+                BroadcastUnauthenticated(connection, new TokenResponseBroadcast { Passed = false, Message = resolvedMessage });
 
-            _networkManager.ServerManager.Broadcast(connection, new ServerDisconnectBroadcast
+            BroadcastUnauthenticated(connection, new ServerDisconnectBroadcast
             {
                 Message = resolvedMessage
             });
 
             if (includeLegacyKickBroadcast)
-                _networkManager.ServerManager.Broadcast(connection, new ServerKickBroadcast());
+                BroadcastUnauthenticated(connection, new ServerKickBroadcast());
+        }
+
+        /// <summary>
+        /// Auth reject / kick messages must reach clients before FishNet marks them authenticated.
+        /// </summary>
+        private void BroadcastUnauthenticated<T>(NetworkConnection connection, T message, Channel channel = Channel.Reliable)
+            where T : struct, IBroadcast
+        {
+            _networkManager.ServerManager.Broadcast(connection, message, requireAuthenticated: false, channel: channel);
         }
 
         private static KickReason MapKickReason(ServerDisconnectReason reason)

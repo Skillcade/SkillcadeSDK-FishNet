@@ -42,6 +42,24 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
             return !string.IsNullOrEmpty(playerId) && _knownPlayerIds.Contains(playerId);
         }
 
+        public bool TryGetByPlayerId(string playerId, out AuthenticatedPlayerData data)
+        {
+            if (!string.IsNullOrEmpty(playerId))
+            {
+                foreach (var entry in _dataByClientId.Values)
+                {
+                    if (entry.PlayerId == playerId)
+                    {
+                        data = entry;
+                        return true;
+                    }
+                }
+            }
+
+            data = null;
+            return false;
+        }
+
         public void Store(AuthenticatedPlayerData data)
         {
             Debug.Log($"[AuthenticatedPlayerDataStore] Store player data {data.ClientId} - {data.PlayerId}");

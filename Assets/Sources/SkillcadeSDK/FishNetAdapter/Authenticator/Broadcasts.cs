@@ -12,6 +12,7 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
     public struct TokenResponseBroadcast : IBroadcast
     {
         public bool Passed;
+        public string Message;
     }
 
     /// <summary>
