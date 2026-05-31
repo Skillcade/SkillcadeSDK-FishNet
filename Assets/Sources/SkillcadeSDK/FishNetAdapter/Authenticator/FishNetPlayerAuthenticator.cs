@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FishNet.Connection;
 using FishNet.Managing;
 using FishNet.Managing.Logging;
+using FishNet.Managing.Server;
 using FishNet.Transporting;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.FishNetAdapter;

@@ -1,10 +1,12 @@
 #if UNITY_SERVER || UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
+using FishNet.Broadcast;
 using FishNet.Connection;
 using FishNet.Managing;
 using FishNet.Managing.Logging;
 using FishNet.Managing.Server;
+using FishNet.Transporting;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.FishNetAdapter.Authenticator;
 using UnityEngine;
@@ -19,16 +21,19 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         private readonly HashSet<int> _pendingDisconnectClientIds = new();
 
-        public void DisconnectAfterAuthFailure(NetworkConnection connection, ServerDisconnectReason reason, string message = null)
+        public void DisconnectAfterAuthFailure(NetworkConnection connection, ServerDisconnectReason reason,
+            string message = null)
         {
             if (!TryBeginDisconnect(connection, out var clientId))
                 return;
 
             var response = new TokenResponseBroadcast { Passed = false, Message = message };
             BroadcastUnauthenticated(connection, response);
-            Debug.Log($"[PlayerDisconnect] Auth failure notify connection={clientId} reason={reason} message={message}");
+            Debug.Log(
+                $"[PlayerDisconnect] Auth failure notify connection={clientId} reason={reason} message={message}");
 
-            BeginDisconnectRoutine(connection, clientId, reason, message, includeLegacyKickBroadcast: true, resendTokenResponseOnRetry: true);
+            BeginDisconnectRoutine(connection, clientId, reason, message, includeLegacyKickBroadcast: true,
+                resendTokenResponseOnRetry: true);
         }
 
         public void Disconnect(NetworkConnection connection, ServerDisconnectReason reason, string message = null)
@@ -36,7 +41,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (!TryBeginDisconnect(connection, out var clientId))
                 return;
 
-            BeginDisconnectRoutine(connection, clientId, reason, message, includeLegacyKickBroadcast: true, resendTokenResponseOnRetry: false);
+            BeginDisconnectRoutine(connection, clientId, reason, message, includeLegacyKickBroadcast: true,
+                resendTokenResponseOnRetry: false);
         }
 
         public void Disconnect(int clientId, ServerDisconnectReason reason, string message = null)
@@ -68,7 +74,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             clientId = connection.ClientId;
             if (!_pendingDisconnectClientIds.Add(clientId))
             {
-                Debug.Log($"[PlayerDisconnect] Disconnect already pending for connection={clientId}, skipping duplicate");
+                Debug.Log(
+                    $"[PlayerDisconnect] Disconnect already pending for connection={clientId}, skipping duplicate");
                 return false;
             }
 
@@ -84,7 +91,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             bool resendTokenResponseOnRetry)
         {
             float delay = _connectionConfig != null ? _connectionConfig.DisconnectNotifyDelaySeconds : 0.35f;
-            _networkManager.StartCoroutine(DisconnectRoutine(connection, clientId, reason, message, delay, includeLegacyKickBroadcast, resendTokenResponseOnRetry));
+            _networkManager.StartCoroutine(DisconnectRoutine(connection, clientId, reason, message, delay,
+                includeLegacyKickBroadcast, resendTokenResponseOnRetry));
         }
 
         private IEnumerator DisconnectRoutine(
@@ -98,7 +106,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
         {
             string resolvedMessage = string.IsNullOrEmpty(message) ? reason.ToString() : message;
 
-            Debug.Log($"[PlayerDisconnect] Notify connection={clientId} reason={reason} message={resolvedMessage} delay={delaySeconds}s resendToken={resendTokenResponseOnRetry}");
+            Debug.Log(
+                $"[PlayerDisconnect] Notify connection={clientId} reason={reason} message={resolvedMessage} delay={delaySeconds}s resendToken={resendTokenResponseOnRetry}");
 
             SendDisconnectNotifies(connection, resolvedMessage, includeLegacyKickBroadcast, resendTokenResponseOnRetry);
 
@@ -113,7 +122,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 if (connection.IsValid)
                 {
                     Debug.Log($"[PlayerDisconnect] Resending notify connection={clientId} (mid-delay)");
-                    SendDisconnectNotifies(connection, resolvedMessage, includeLegacyKickBroadcast, resendTokenResponseOnRetry);
+                    SendDisconnectNotifies(connection, resolvedMessage, includeLegacyKickBroadcast,
+                        resendTokenResponseOnRetry);
                 }
 
                 float remainingDelay = delaySeconds - halfDelay;
@@ -150,7 +160,8 @@ namespace SkillcadeSDK.FishNetAdapter.Players
                 return;
 
             if (includeTokenResponse)
-                BroadcastUnauthenticated(connection, new TokenResponseBroadcast { Passed = false, Message = resolvedMessage });
+                BroadcastUnauthenticated(connection,
+                    new TokenResponseBroadcast { Passed = false, Message = resolvedMessage });
 
             BroadcastUnauthenticated(connection, new ServerDisconnectBroadcast
             {
