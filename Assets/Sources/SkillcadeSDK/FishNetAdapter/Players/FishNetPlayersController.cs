@@ -29,6 +29,7 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
+        [Inject] private readonly IServerPlayerDisconnectService _disconnectService;
 #endif
         
         private readonly Dictionary<int, FishNetPlayerData> _players = new();
@@ -75,6 +76,15 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
             if (replayClientId != connection.ClientId)
             {
+#if UNITY_SERVER || UNITY_EDITOR
+                if (!TryPrepareSlotForReconnect(replayClientId, connection.ClientId, instance))
+                {
+                    Debug.LogWarning($"[PlayerReconnect] Failed to prepare slot replayClientId={replayClientId} for connection={connection.ClientId} — disconnecting");
+                    instance.Despawn();
+                    _disconnectService.Disconnect(connection, ServerDisconnectReason.ReconnectRejected, "Reconnect slot is still occupied");
+                    return;
+                }
+#endif
                 Debug.Log($"[PlayerReconnect] Rebind network id: player={playerId} replayClientId={replayClientId} connection={connection.ClientId}");
                 instance.RebindServerNetworkId(replayClientId);
             }
@@ -142,7 +152,21 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
             if (!_players.TryAdd(playerId, playerData))
             {
-                Debug.LogWarning($"[FishNetPlayersController] Key {playerId} already in use by a different instance, exiting");
+                if (_players.TryGetValue(playerId, out var occupying))
+                {
+                    int occupyingConn = occupying.ServerConnectionClientId >= 0 ? occupying.ServerConnectionClientId : playerId;
+                    string occupyingPlayerId = null;
+                    if (PlayerMatchData.TryGetFromPlayer(occupying, out var occupyingMatch))
+                        occupyingPlayerId = occupyingMatch.PlayerId;
+                    int newConn = playerData != null && playerData.ServerConnectionClientId >= 0
+                        ? playerData.ServerConnectionClientId
+                        : -1;
+                    Debug.LogWarning($"[FishNetPlayersController] Key {playerId} already in use by a different instance (existingConn={occupyingConn}, existingPlayerId={occupyingPlayerId}, newConn={newConn}), exiting");
+                }
+                else
+                {
+                    Debug.LogWarning($"[FishNetPlayersController] Key {playerId} already in use by a different instance, exiting");
+                }
                 return;
             }
 
@@ -176,12 +200,67 @@ namespace SkillcadeSDK.FishNetAdapter.Players
 
         public void UnregisterPlayerData(int playerId)
         {
-            Debug.Log($"[FishNetPlayersController] Unregister player data {playerId}");
+            UnregisterPlayerDataInternal(playerId, invokeRemovedEvent: true);
+        }
+
+        public bool TryGetPlayerDataByConnectionId(int connectionClientId, out FishNetPlayerData data)
+        {
+            foreach (var playerData in _players.Values)
+            {
+                if (playerData.ServerConnectionClientId == connectionClientId)
+                {
+                    data = playerData;
+                    return true;
+                }
+            }
+
+            data = null;
+            return false;
+        }
+
+#if UNITY_SERVER || UNITY_EDITOR
+        private bool TryPrepareSlotForReconnect(int replayClientId, int newConnectionClientId, FishNetPlayerData newInstance)
+        {
+            if (!_players.TryGetValue(replayClientId, out var existing))
+                return true;
+
+            if (ReferenceEquals(existing, newInstance))
+                return true;
+
+            int existingConnId = existing.ServerConnectionClientId >= 0
+                ? existing.ServerConnectionClientId
+                : existing.OwnerId;
+            bool existingConnActive = NetworkManager.ServerManager.Clients.TryGetValue(existingConnId, out var existingConn)
+                && existingConn.IsActive;
+
+            string existingPlayerId = null;
+            if (PlayerMatchData.TryGetFromPlayer(existing, out var existingMatch))
+                existingPlayerId = existingMatch.PlayerId;
+
+            if (existingConnActive)
+            {
+                Debug.LogWarning($"[FishNetPlayersController] Cannot prepare reconnect slot replayClientId={replayClientId}: connection={existingConnId} still active (new={newConnectionClientId}, playerId={existingPlayerId})");
+                return false;
+            }
+
+            Debug.Log($"[FishNetPlayersController] Force unregister stale replayClientId={replayClientId} (oldConn={existingConnId}, newConn={newConnectionClientId}, playerId={existingPlayerId})");
+            UnregisterPlayerDataInternal(replayClientId, invokeRemovedEvent: false);
+            return true;
+        }
+#endif
+
+        private void UnregisterPlayerDataInternal(int playerId, bool invokeRemovedEvent)
+        {
+            Debug.Log($"[FishNetPlayersController] Unregister player data {playerId} invokeRemovedEvent={invokeRemovedEvent}");
             if (!_players.Remove(playerId, out var data))
                 return;
 
             Debug.Log("[FishNetPlayersController] Unsubscribe to data changed");
             data.OnChanged -= OnPlayerDataChanged;
+
+            if (!invokeRemovedEvent)
+                return;
+
             Debug.Log("[FishNetPlayersController] Call OnPlayerRemoved");
             OnPlayerRemoved?.Invoke(playerId, data);
 

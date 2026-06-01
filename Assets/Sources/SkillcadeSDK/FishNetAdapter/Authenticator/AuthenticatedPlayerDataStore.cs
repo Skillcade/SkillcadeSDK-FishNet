@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FishNet.Managing;
 using UnityEngine;
 
 namespace SkillcadeSDK.FishNetAdapter.Authenticator
@@ -63,6 +64,23 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         public void Store(AuthenticatedPlayerData data)
         {
             Debug.Log($"[AuthenticatedPlayerDataStore] Store player data {data.ClientId} - {data.PlayerId}");
+
+            if (!string.IsNullOrEmpty(data.PlayerId))
+            {
+                var staleClientIds = new List<int>();
+                foreach (var entry in _dataByClientId)
+                {
+                    if (entry.Value.PlayerId == data.PlayerId && entry.Key != data.ClientId)
+                        staleClientIds.Add(entry.Key);
+                }
+
+                for (int i = 0; i < staleClientIds.Count; i++)
+                {
+                    Debug.Log($"[AuthenticatedPlayerDataStore] Replacing stale auth entry client={staleClientIds[i]} with {data.ClientId} for player {data.PlayerId}");
+                    RemoveClient(staleClientIds[i]);
+                }
+            }
+
             _dataByClientId[data.ClientId] = data;
 
             if (!string.IsNullOrEmpty(data.PlayerId))
@@ -72,6 +90,22 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 else
                     Debug.Log("[AuthenticatedPlayerDataStore] Already knew this player");
             }
+        }
+
+        /// <summary>
+        /// Returns true when the player has an auth entry whose FishNet connection is still active.
+        /// </summary>
+        public bool TryGetLiveClientIdForPlayer(string playerId, NetworkManager networkManager, out int clientId)
+        {
+            clientId = -1;
+            if (!TryGetByPlayerId(playerId, out var auth))
+                return false;
+
+            clientId = auth.ClientId;
+            if (networkManager?.ServerManager?.Clients == null)
+                return false;
+
+            return networkManager.ServerManager.Clients.TryGetValue(clientId, out var conn) && conn.IsActive;
         }
 
         public bool TryGetByClientId(int clientId, out AuthenticatedPlayerData data)

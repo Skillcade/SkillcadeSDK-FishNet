@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using FishNet.Connection;
 using FishNet.Managing;
-using FishNet.Managing.Logging;
 using FishNet.Managing.Server;
 using FishNet.Transporting;
 using SkillcadeSDK.Connection;
@@ -144,13 +143,17 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
 
                     if (!canAccept && _authenticatedPlayerDataStore.IsPlayerKnown(payload.PlayerId))
                     {
-                        if (TryResolveStaleDuplicatePlayer(connection, payload.PlayerId, out bool readyForReconnect))
+                        if (IsLiveDuplicateSession(payload.PlayerId, out int existingClientId))
                         {
-                            if (readyForReconnect)
-                                isReconnect = true;
-                            else
-                                canAccept = _authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount);
+                            Debug.LogWarning($"[PlayerDisconnect] Reject connection={connection.ClientId} player={payload.PlayerId}: live duplicate session (existing={existingClientId})");
+                            RejectAuth(connection, ServerDisconnectReason.DuplicatePlayer, "Player is already connected to this match");
+                            return;
                         }
+
+                        if (TryResolveStaleAuthEntry(payload.PlayerId, out bool readyForReconnect) && readyForReconnect)
+                            isReconnect = true;
+                        else
+                            canAccept = _authenticatedPlayerDataStore.CanAcceptPlayer(payload.PlayerId, _connectionConfig.TargetPlayerCount);
                     }
 
                     Debug.Log($"[PlayerAuth] Hub: CanAcceptPlayer({payload.PlayerId})={canAccept} targetCount={_connectionConfig.TargetPlayerCount} isReconnect={isReconnect}");
@@ -307,13 +310,23 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
         }
 
         /// <summary>
-        /// Same playerId reconnecting while the old FishNet connection is dead or still registered
-        /// in auth store (race with OnPlayerRemoved). Starts grace when in-game, or clears stale auth.
+        /// Same PlayerId connecting while another session is still live on the server.
+        /// Grace-active players are excluded — that path is a legitimate reconnect, not a duplicate tab.
         /// </summary>
-        private bool TryResolveStaleDuplicatePlayer(
-            NetworkConnection newConnection,
-            string playerId,
-            out bool readyForReconnect)
+        private bool IsLiveDuplicateSession(string playerId, out int existingClientId)
+        {
+            existingClientId = -1;
+            if (_reconnectService.IsGraceActive(playerId))
+                return false;
+
+            return _authenticatedPlayerDataStore.TryGetLiveClientIdForPlayer(playerId, NetworkManager, out existingClientId);
+        }
+
+        /// <summary>
+        /// Auth store still knows the player but the old FishNet connection is dead (race with OnPlayerRemoved).
+        /// Clears stale auth and opens grace when appropriate — never kicks an active session.
+        /// </summary>
+        private bool TryResolveStaleAuthEntry(string playerId, out bool readyForReconnect)
         {
             readyForReconnect = false;
 
@@ -321,10 +334,10 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                 return false;
 
             int oldClientId = existingAuth.ClientId;
-            if (oldClientId == newConnection.ClientId)
+            if (NetworkManager.ServerManager.Clients.TryGetValue(oldClientId, out var oldConn) && oldConn.IsActive)
                 return false;
 
-            Debug.Log($"[PlayerAuth] [PlayerReconnect] Stale duplicate player={playerId} oldConnection={oldClientId} newConnection={newConnection.ClientId} state={_gameStateMachine.CurrentStateType}");
+            Debug.Log($"[PlayerAuth] [PlayerReconnect] Stale auth entry player={playerId} oldConnection={oldClientId} state={_gameStateMachine.CurrentStateType}");
 
             foreach (var playerData in _playersController.GetAllPlayersData())
             {
@@ -335,22 +348,11 @@ namespace SkillcadeSDK.FishNetAdapter.Authenticator
                     ? playerData.ServerConnectionClientId
                     : playerData.OwnerId;
                 bool graceStarted = _reconnectService.TryBeginGracePeriod(connId, playerData, _gameStateMachine.CurrentStateType);
-                Debug.Log($"[PlayerAuth] [PlayerReconnect] TryBeginGracePeriod from stale duplicate: started={graceStarted}");
+                Debug.Log($"[PlayerAuth] [PlayerReconnect] TryBeginGracePeriod from stale auth: started={graceStarted}");
                 break;
             }
 
-            if (NetworkManager.ServerManager.Clients.TryGetValue(oldClientId, out var oldConn) && oldConn.IsActive)
-            {
-                Debug.Log($"[PlayerAuth] [PlayerReconnect] Kicking stale connection={oldClientId} for player={playerId}");
-                oldConn.Kick(
-                    KickReason.UnusualActivity,
-                    LoggingType.Common,
-                    $"Replaced by reconnect from connection {newConnection.ClientId}");
-            }
-            else
-            {
-                _authenticatedPlayerDataStore.RemoveClient(oldClientId);
-            }
+            _authenticatedPlayerDataStore.RemoveClient(oldClientId);
 
             readyForReconnect = _reconnectService.IsGraceActive(playerId);
             return true;

@@ -357,6 +357,12 @@ namespace SkillcadeSDK.FishNetAdapter.Players
             if (slot == null)
                 return false;
 
+            foreach (var kvp in _replayClientIdByConnectionId)
+            {
+                if (kvp.Value == slot.ReplayClientId && kvp.Key != newConnectionClientId)
+                    Debug.LogWarning($"[PlayerReconnect] Orphan mapping detected: connection={kvp.Key} also maps to replayClientId={slot.ReplayClientId}, replacing with connection={newConnectionClientId}");
+            }
+
             _replayClientIdByConnectionId[newConnectionClientId] = slot.ReplayClientId;
             slot.LastConnectionClientId = newConnectionClientId;
             Debug.Log($"[PlayerReconnect] Accept reconnect: player={slot.PlayerId}, replayClientId={slot.ReplayClientId}, newConnection={newConnectionClientId}, hub={hubIntegrated}");

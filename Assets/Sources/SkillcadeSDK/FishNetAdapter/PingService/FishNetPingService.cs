@@ -24,6 +24,7 @@ namespace SkillcadeSDK.FishNetAdapter.PingService
         [Inject] private readonly NetworkManager _networkManager;
         [Inject] private readonly IConnectionController _connectionController;
         [Inject] private readonly FishNetPlayersController _playersController;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
 
         private bool _subscribed;
         private Dictionary<int, PlayerRequestInfo> _playerRequests;
@@ -145,14 +146,19 @@ namespace SkillcadeSDK.FishNetAdapter.PingService
             var ping = currentTime - playerRequestInfo.RequestedTime;
             var pingInMs = Mathf.CeilToInt((float)ping * 1000f);
 
-            if (_playersController.TryGetPlayerData(connection.ClientId, out var playerData))
+            int lookupId = _reconnectService.ResolveReplayClientId(connection.ClientId);
+            if (!_playersController.TryGetPlayerData(lookupId, out var playerData)
+                && !_playersController.TryGetPlayerDataByConnectionId(connection.ClientId, out playerData))
             {
-                if (!PlayerPingData.TryGetFromPlayer(playerData, out var pingData))
-                    pingData = new PlayerPingData();
-                
-                pingData.PingInMs = pingInMs;
-                pingData.SetToPlayer(playerData);
+                playerRequestInfo.Requested = false;
+                return;
             }
+
+            if (!PlayerPingData.TryGetFromPlayer(playerData, out var pingData))
+                pingData = new PlayerPingData();
+
+            pingData.PingInMs = pingInMs;
+            pingData.SetToPlayer(playerData);
             
             playerRequestInfo.Requested = false;
         }

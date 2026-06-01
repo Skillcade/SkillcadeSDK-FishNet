@@ -8,6 +8,7 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
     public class FishNetPingWriter
     {
         [Inject] private readonly FishNetPlayersController _playersController;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
         
         private int _ping = -1;
         
@@ -23,7 +24,11 @@ namespace SkillcadeSDK.FishNetAdapter.Replays
         private void UpdatePingFromData(int ownerId)
         {
             _ping = -1;
-            if (!_playersController.TryGetPlayerData(ownerId, out var playerData))
+            int lookupId = _reconnectService != null
+                ? _reconnectService.ResolveReplayClientId(ownerId)
+                : ownerId;
+            if (!_playersController.TryGetPlayerData(lookupId, out var playerData)
+                && !_playersController.TryGetPlayerDataByConnectionId(ownerId, out playerData))
                 return;
             
             if (!PlayerPingData.TryGetFromPlayer(playerData, out var pingData))

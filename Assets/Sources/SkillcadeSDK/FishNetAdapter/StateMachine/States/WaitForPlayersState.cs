@@ -27,6 +27,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
         [Inject] private readonly RespawnServiceProvider _respawnServiceProvider;
         [Inject] private readonly IConnectionController _connectionController;
         [Inject] private readonly GameEventBus _eventBus;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
         
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ServerPayloadController _serverPayloadController;
@@ -44,6 +45,9 @@ namespace SkillcadeSDK.FishNetAdapter.States
 
             if (IsServer)
             {
+                if (prevState == GameStateType.Finished)
+                    _reconnectService.ResetForNewMatch();
+
                 ClearReadyStateForPlayers();
                 _playerSpawner.EnsurePlayersDespawned();
                 _respawnServiceProvider.TriggerRespawn();

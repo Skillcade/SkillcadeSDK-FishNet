@@ -5,6 +5,7 @@ using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Connection;
 using SkillcadeSDK.Events;
 using SkillcadeSDK.FishNetAdapter.Match;
+using SkillcadeSDK.FishNetAdapter.Players;
 using SkillcadeSDK.StateMachine;
 using UnityEngine;
 using VContainer;
@@ -32,6 +33,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
         
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ReplaySendService _replaySendService;
+        [Inject] private readonly PlayerReconnectService _reconnectService;
 #endif
 
         private float _timer;
@@ -83,6 +85,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
 #endif
             Debug.Log("[FinishedState] Send winner");
             await _matchService.SendWinnerToBackend(winnerId, winnerPlayerId);
+            _reconnectService.ResetForNewMatch();
         }
     }
 }
