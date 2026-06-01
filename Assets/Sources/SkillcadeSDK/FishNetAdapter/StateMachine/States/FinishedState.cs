@@ -33,9 +33,10 @@ namespace SkillcadeSDK.FishNetAdapter.States
         
 #if UNITY_SERVER || UNITY_EDITOR
         [Inject] private readonly ReplaySendService _replaySendService;
-        [Inject] private readonly PlayerReconnectService _reconnectService;
 #endif
 
+        [Inject] private readonly PlayerReconnectService _reconnectService;
+        
         private float _timer;
 
         protected override void OnEnter(GameStateType prevState, FinishedStateData data)
