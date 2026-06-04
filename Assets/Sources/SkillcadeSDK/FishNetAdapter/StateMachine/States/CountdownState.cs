@@ -1,4 +1,5 @@
 using System;
+using FishNet.Managing;
 using SkillcadeSDK.Common;
 using SkillcadeSDK.Common.Players;
 using SkillcadeSDK.Connection;
@@ -21,6 +22,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
     {
         public override GameStateType Type => GameStateType.Countdown;
 
+        [Inject] private readonly NetworkManager _networkManager;
         [Inject] private readonly ISkillcadeConfig _config;
         [Inject] private readonly IPlayerSpawner _playerSpawner;
         [Inject] private readonly GameEventBus _eventBus;
@@ -60,7 +62,10 @@ namespace SkillcadeSDK.FishNetAdapter.States
             }
 
             if (IsServer && _timer <= 0f)
-                StateMachine.SetStateServer(GameStateType.Running, new RunningStateData(GetGameDuration()));
+            {
+                var startTime = _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
+                StateMachine.SetStateServer(GameStateType.Running, new RunningStateData(GetGameDuration(), startTime));
+            }
         }
 
         private float GetGameDuration()

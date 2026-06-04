@@ -35,8 +35,14 @@ namespace SkillcadeSDK.FishNetAdapter.States
             base.OnEnter(prevState, data);
 
             _gameTime = data.GameDurationSeconds;
-            _startTime = _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
+            _startTime = data.RunningStartTime > 0
+                ? data.RunningStartTime
+                : _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
             _lastSecond = Mathf.CeilToInt(_gameTime);
+            var timePassed = _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick) - _startTime;
+            _lastSecond = Mathf.CeilToInt(_gameTime - (float)timePassed);
+            if (_lastSecond < 0)
+                _lastSecond = 0;
             _eventBus.Publish(new RunningTimerTickEvent(_lastSecond));
 
             if (IsServer)
@@ -45,7 +51,7 @@ namespace SkillcadeSDK.FishNetAdapter.States
                 _respawnServiceProvider.TriggerRespawn();
             }
 
-            _eventBus.Publish(new RunningStartEvent());
+            _eventBus.Publish(new RunningStartEvent(_startTime));
 
             if (_connectionController.ConnectionState != ConnectionState.SinglePlayer)
                 _replayWriteService.StartWrite();
