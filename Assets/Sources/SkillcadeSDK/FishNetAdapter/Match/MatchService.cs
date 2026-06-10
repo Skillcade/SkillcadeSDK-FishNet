@@ -38,6 +38,7 @@ namespace SkillcadeSDK.FishNetAdapter.Match
                 {
                     Debug.Log($"[MatchService] Sending winner {winnerClientId} with stable PlayerId {winnerPlayerId}");
                     await _webRequester.SendWinner(winnerPlayerId);
+                    await _webRequester.StopDeployment();
                     return;
                 }
 
@@ -55,6 +56,7 @@ namespace SkillcadeSDK.FishNetAdapter.Match
 
                 Debug.Log($"[MatchService] Sending winner {winnerClientId} with PlayerId {matchData.PlayerId}");
                 await _webRequester.SendWinner(matchData.PlayerId);
+                await _webRequester.StopDeployment();
             }
             catch (Exception e)
             {
